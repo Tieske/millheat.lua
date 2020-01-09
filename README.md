@@ -5,21 +5,6 @@ instructions.
 
 ## Status
 
-# * WARNING * WARNING * WARNING * WARNING *
-
-The API unfortunately uses an insecure and deprecated TLSv1 version. So use
-at your own risk. This also applies to their apps, hence please make sure you
-do not re-use any passwords, but create a unique one for this API.
-
-See: https://github.com/Tieske/millheat.lua/pull/1
-
-Once the problem is resolved:
-
- - update your unique password
- - re-request access tokens (here: https://api.millheat.com/ )
-
-# * WARNING * WARNING * WARNING * WARNING *
-
 Early development, session management works, all current methods implemented
 (that said; there are not that many methods unfortunately).
 
