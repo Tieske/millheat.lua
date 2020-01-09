@@ -1,0 +1,10 @@
+project='millheat.lua'
+title='Millheat API'
+description='Millheat electrical heater API access made easy'
+format='markdown'
+file='./src/'
+dir='docs'
+readme='readme.md'
+sort=true
+sort_modules=true
+style='./docs/'

@@ -1,0 +1,478 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Millheat API</title>
+    <link rel="stylesheet" href="ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>millheat.lua</h1>
+
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Generic_functions">Generic functions </a></li>
+<li><a href="#API_specific_functions">API specific functions </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><strong>millheat</strong></li>
+</ul>
+<h2>Topics</h2>
+<ul class="">
+  <li><a href="topics/readme.md.html">readme</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>millheat</code></h1>
+<p>Millheat API library for Millheat electrical heaters.</p>
+<p> This library implements the session management and makes it easy to access
+ individual endpoints of the API.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Copyright</strong>: 2019-2020 Thijs Schreijer</li>
+        <li><strong>Release</strong>: Version x.x, Library to acces the Millheat API</li>
+        <li><strong>License</strong>: millheat.lua is free software under the MIT/X11 license.</li>
+        <li><strong>Author</strong>: Thijs Schreijer, http://www.thijsschreijer.nl</li>
+    </ul>
+
+
+<h2><a href="#Generic_functions">Generic functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#login">login ()</a></td>
+	<td class="summary">Logs in the current session.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#logout">logout ()</a></td>
+	<td class="summary">Logs out of the current session.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new">new (access_key, secret_token, username, password)</a></td>
+	<td class="summary">Creates a new Millheat session instance.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#request">request (path, query)</a></td>
+	<td class="summary">Performs a HTTP request on the Millheat API.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#rewrite_error">rewrite_error (expected, ...)</a></td>
+	<td class="summary">Rewrite errors to Lua format (nil+error).</td>
+	</tr>
+</table>
+<h2><a href="#API_specific_functions">API specific functions </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#control_device">control_device (device_id, operation, status, temperature)</a></td>
+	<td class="summary">Controls a specific device.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_devices_by_room">get_devices_by_room (room_id)</a></td>
+	<td class="summary">Gets the list of devices associated with a room.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_homes">get_homes ()</a></td>
+	<td class="summary">Gets the list of homes.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_independent_devices_by_home">get_independent_devices_by_home (home_id)</a></td>
+	<td class="summary">Gets the list of independent devices not associated with a room.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_rooms_by_home">get_rooms_by_home (home_id)</a></td>
+	<td class="summary">Gets the list of rooms associated with a home.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header has-description"><a name="Generic_functions"></a>Generic functions </h2>
+
+          <div class="section-description">
+           Functions for session management and instantiation
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "login"></a>
+    <strong>login ()</strong>
+    </dt>
+    <dd>
+    Logs in the current session.
+ This will automatically be called by the <a href="index.html#request">request</a> method, if not logged in
+ already.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>true</code> or <code>nil+err</code>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> ok, err = mhsession:login()
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "logout"></a>
+    <strong>logout ()</strong>
+    </dt>
+    <dd>
+    Logs out of the current session.
+ There is no real logout option with this API. Hence this only deletes
+ the locally stored tokens.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>true</code>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> ok, err = mhsession:login()
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
+<span class="keyword">else</span>
+  mhsession:logout()
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "new"></a>
+    <strong>new (access_key, secret_token, username, password)</strong>
+    </dt>
+    <dd>
+    Creates a new Millheat session instance.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">access_key</span>
+         (string) required, the access_key to use for login
+        </li>
+        <li><span class="parameter">secret_token</span>
+         (string) required, the secret_token to use for login
+        </li>
+        <li><span class="parameter">username</span>
+         (string) required, the username to use for login
+        </li>
+        <li><span class="parameter">password</span>
+         (string) required, the password to use for login
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        Millheat session object
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> ok, err = mhsession:login()
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "request"></a>
+    <strong>request (path, query)</strong>
+    </dt>
+    <dd>
+    Performs a HTTP request on the Millheat API.
+ It will automatically inject authentication/session data. Or if not logged
+ logged in yet, it will log in. If the session has expired it will be renewed.</p>
+
+<p> NOTE: if the response_body is json, then it will be decoded and returned as
+ a Lua table.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+         (string) the relative path within the API base path
+        </li>
+        <li><span class="parameter">query</span>
+         (table) optional query parameters (will be escaped)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        ok, response<em>body, response</em>code, response<em>headers, response</em>status_line
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+
+<span class="keyword">local</span> query = { [<span class="string">"param1"</span>] = <span class="string">"value1"</span> }
+
+<span class="comment">-- the following line will automatically log in
+</span><span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:request(<span class="string">"/some/path"</span>, query)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "rewrite_error"></a>
+    <strong>rewrite_error (expected, ...)</strong>
+    </dt>
+    <dd>
+    Rewrite errors to Lua format (nil+error).
+ Takes the output of the <a href="index.html#request">request</a> function and validates it for errors;</p>
+
+<ul>
+    <li>nil+err</li>
+    <li>body with "success = false" (some API calls return a 200 with success=false for example)</li>
+    <li>mismatch in expected status code (a 200 expected, but a 404 received)</li>
+</ul>
+
+<p> This reduces the error handling to standard Lua errors, instead of having to
+ validate each of the situations above individually.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">expected</span>
+         (number) optional expected status code, if nil, it will be ignored
+        </li>
+        <li><span class="parameter">...</span>
+         same parameters as the <a href="index.html#request">request</a> method
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        nil+err or the input arguments
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+
+<span class="comment">-- Make a request where we expect a 200 result
+</span><span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:rewrite_error(<span class="number">200</span>, mhsession:request(<span class="string">"/attributes"</span>, <span class="string">"GET"</span>))
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="keyword">return</span> <span class="keyword">nil</span>, response_body <span class="comment">-- a 404 will also follow this path now, since we only want 200's
+</span><span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="API_specific_functions"></a>API specific functions </h2>
+
+          <div class="section-description">
+           This section contains functions that directly interact with the Millheat API.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "control_device"></a>
+    <strong>control_device (device_id, operation, status, temperature)</strong>
+    </dt>
+    <dd>
+    Controls a specific device.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">device_id</span>
+         the device to control
+        </li>
+        <li><span class="parameter">operation</span>
+         (string, either "temperature" or "switch") the operation to perform
+        </li>
+        <li><span class="parameter">status</span>
+         (string) for a temperature operation either "room" or single". For a switch operation either "on" or "off" (or a boolean true/false).
+        </li>
+        <li><span class="parameter">temperature</span>
+         (integer, optional) the temperature to set
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        true or nil+err
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> ok, err = mhsession:control_device(<span class="number">123</span>, <span class="string">"switch"</span>, <span class="string">"on"</span>, <span class="number">19</span>)
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="string">"failed to control the device: "</span>, err)
+<span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "get_devices_by_room"></a>
+    <strong>get_devices_by_room (room_id)</strong>
+    </dt>
+    <dd>
+    Gets the list of devices associated with a room.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">room_id</span>
+         the room for which to get the list of devices
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list, or nil+err
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_homes"></a>
+    <strong>get_homes ()</strong>
+    </dt>
+    <dd>
+    Gets the list of homes.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list, or nil+err
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> home_list = mhsession:get_homes()</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "get_independent_devices_by_home"></a>
+    <strong>get_independent_devices_by_home (home_id)</strong>
+    </dt>
+    <dd>
+    Gets the list of independent devices not associated with a room.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">home_id</span>
+         the home for which to get the list of independent devices
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list, or nil+err
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_rooms_by_home"></a>
+    <strong>get_rooms_by_home (home_id)</strong>
+    </dt>
+    <dd>
+    Gets the list of rooms associated with a home.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">home_id</span>
+         the home for which to get the list of rooms
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        list, or nil+err
+    </ol>
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2020-01-09 17:57:31 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
