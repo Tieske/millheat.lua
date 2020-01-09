@@ -93,10 +93,6 @@ local function mill_request(path, method, headers, query, body)
     headers = headers,
     source = ltn12.source.string(body or ""),
     sink = ltn12.sink.table(response_body),
-    -- TLS options
-    protocol = "any",
-    options  = {"all", "no_sslv2", "no_sslv3"},-- "no_tlsv1"},
-    verify   = "none",
   }
 --print(("="):rep(60))
 --print("Request: "..require("pl.pretty").write(r))
