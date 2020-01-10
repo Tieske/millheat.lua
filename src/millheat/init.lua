@@ -47,6 +47,10 @@ local CLOCK_SKEW = 5 * 60 -- clock skew in seconds to allow when refreshing toke
 -- https method is set on the module table, such that it can be overridden
 -- by another implementation (eg. Copas)
 millheat.https = require "ssl.https"
+-- Logger is set on the module table, to be able to override it
+-- supports: debug, info, warn, error, fatal
+-- log:debug([message]|[table]|[format, ...]|[function, ...])
+millheat.log = require("logging.console")()
 
 
 
@@ -94,10 +98,12 @@ local function mill_request(path, method, headers, query, body)
     source = ltn12.source.string(body or ""),
     sink = ltn12.sink.table(response_body),
   }
---print(("="):rep(60))
---print("Request: "..require("pl.pretty").write(r))
+  millheat.log:debug("[millheat] making api request to: %s %s", r.method, r.url)
+  --millheat.log:debug(r)  -- not logging because of credentials
+
   local ok, response_code, response_headers, response_status_line = millheat.https.request(r)
   if not ok then
+    millheat.log:error("[millheat] api request failed with: %s", response_code)
     return ok, response_code, response_headers, response_status_line
   end
 
@@ -117,6 +123,7 @@ local function mill_request(path, method, headers, query, body)
 --  status = response_code,
 --  headers = response_headers,
 --}))
+  millheat.log:debug("[millheat] api request returned: %s", response_code)
 
   return ok, response_body, response_code, response_headers, response_status_line
 end
@@ -152,15 +159,19 @@ end
 local function set_tokens(self, access, refresh)
   self.access_token = access
   if access ~= nil then
+    millheat.log:debug("[millheat] storing access_token for %s", self.username)
     self.access_token_expires = assert(get_token_expiry(access))
   else
+    millheat.log:debug("[millheat] clearing access_token for %s", self.username)
     self.access_token_expires = nil
   end
 
   self.refresh_token = refresh
   if refresh ~= nil then
+    millheat.log:debug("[millheat] storing refresh_token for %s", self.username)
     self.refresh_token_expires = assert(get_token_expiry(refresh))
   else
+    millheat.log:debug("[millheat] clearing refresh_token for %s", self.username)
     self.refresh_token_expires = nil
   end
   return true
@@ -177,6 +188,7 @@ local function get_refresh_token(self)
   end
 
   -- login and get tokens
+  millheat.log:debug("[millheat] refresh_token expired/unavailable, getting authorization_code for %s", self.username)
   local ok, response_body = self:rewrite_error(200,
     mill_request("/share/applyAuthCode", "POST", {
         access_key = self.access_key,
@@ -184,6 +196,7 @@ local function get_refresh_token(self)
       })
   )
   if not ok then
+    millheat.log:error("[millheat] failed to get authorization_code: %s", response_body)
     return nil, "failed to get authorization_code: "..response_body
   end
   local authorization_code = assert((response_body.data or {}).authorization_code, "response is missing authorization_code")
@@ -196,8 +209,10 @@ local function get_refresh_token(self)
     authorization_code = authorization_code,
   }
 
+  millheat.log:debug("[millheat] getting refresh_token for %s", self.username)
   ok, response_body = self:rewrite_error(200, mill_request("/share/applyAccessToken", "POST", headers, query))
   if not ok then
+    millheat.log:error("[millheat] failed to get access and refresh tokens: %s", response_body)
     return nil, "failed to get access and refresh tokens: "..response_body
   end
 
@@ -219,6 +234,7 @@ local function get_access_token(self)
   end
 
   -- no access token, or expired
+  millheat.log:debug("[millheat] access_token expired/unavailable for %s", self.username)
   local refresh, err = get_refresh_token(self)
   if not refresh then
     return nil, err
@@ -228,12 +244,14 @@ local function get_access_token(self)
     -- the access token wasn't updated while fetching the refresh token
     -- essentially: access was expired, refresh still valid, so we need to
     -- make a refresh call
+    millheat.log:debug("[millheat] getting access_token for %s", self.username)
     local ok, response_body = self:rewrite_error(200,
       mill_request("/share/refreshtoken", "POST", nil, {
         refreshtoken = refresh,
       })
     )
     if not ok then
+      millheat.log:error("[millheat] failed to refresh the access token: %s", response_body)
       return nil, "failed to refresh the access token: "..response_body
     end
 
@@ -265,6 +283,7 @@ function millheat.new(access_key, secret_token, username, password)
     username = assert(username, "3rd parameter, 'username' is missing"),
     password = assert(password, "4th parameter, 'password' is missing"),
   }
+  millheat.log:debug("[millheat] created new instance for %s", self.username)
   return setmetatable(self, millheat_mt)
 end
 
@@ -349,6 +368,7 @@ end
 --   mhsession:logout()
 -- end
 function millheat:logout()
+  millheat.log:debug("[millheat] logout for %s", self.username)
   set_tokens(self, nil, nil)
 end
 
@@ -366,6 +386,7 @@ end
 --   print("failed to login: ", err)
 -- end
 function millheat:login()
+  millheat.log:debug("[millheat] logging in for %s", self.username)
   local access, err = get_access_token(self)  -- will force a login if required
   return access and true, err
 end
@@ -389,6 +410,7 @@ function millheat:get_homes()
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/selectHomeList"))
   if not ok then
+    millheat.log:error("[millheat] failed to get home list: %s", response_body)
     return nil, "failed to get home list: "..response_body
   end
 
@@ -403,6 +425,7 @@ function millheat:get_rooms_by_home(home_id)
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome", { homeId = string.format("%d", home_id) }))
   if not ok then
+    millheat.log:error("[millheat] failed to get room list: %s", response_body)
     return nil, "failed to get room list: "..response_body
   end
 
@@ -417,6 +440,7 @@ function millheat:get_devices_by_room(room_id)
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom", { roomId = string.format("%d", room_id) }))
   if not ok then
+    millheat.log:error("[millheat] failed to get device list: %s", response_body)
     return nil, "failed to get device list: "..response_body
   end
 
@@ -431,7 +455,8 @@ function millheat:get_independent_devices_by_home(home_id)
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices", { homeId = string.format("%d", home_id) }))
   if not ok then
-    return nil, "failed to get room list: "..response_body
+    millheat.log:error("[millheat] failed to get independent devices list: %s", response_body)
+    return nil, "failed to get independent devices list: "..response_body
   end
 
   return response_body.data.deviceInfoList
@@ -495,6 +520,7 @@ function millheat:control_device(device_id, operation, status, temperature)
     status = status,
   }))
   if not ok then
+    millheat.log:error("[millheat] failed to control device: %s", response_body)
     return nil, "failed to control device: "..response_body
   end
 
