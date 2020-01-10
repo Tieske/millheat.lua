@@ -446,22 +446,16 @@ end
 -- @param device_id the device to control
 -- @param operation (string, either "temperature" or "switch") the operation to perform
 -- @param status (string) for a temperature operation either "room" or single". For a switch operation either "on" or "off" (or a boolean true/false).
--- @param temperature (integer, optional) the temperature to set
+-- @param temperature (integer) the temperature to set, only has an effect with "temperature"+"single" operation and status.
 -- @return true or nil+err
 -- @usage
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
--- local ok, err = mhsession:control_device(123, "switch", "on", 19)
+-- local ok, err = mhsession:control_device(123, "temperature", "single", 19)
 -- if not ok then
 --   print("failed to control the device: ", err)
 -- end
 function millheat:control_device(device_id, operation, status, temperature)
-
-  if temperature ~= nil then
-    temperature = tostring(temperature)
-    assert(math.floor(tonumber(temperature) or -999) == tonumber(temperature),
-      "temperature must be an integer number or nil")
-  end
 
   status = tostring(status):lower()
   operation = tostring(operation):lower()
@@ -490,6 +484,13 @@ function millheat:control_device(device_id, operation, status, temperature)
   else
     return nil, "operation must be either 'temperature' or 'switch', got: ".. operation
   end
+
+  if operation == "1" and status == "1" then
+    temperature = tostring(temperature)
+    assert(math.floor(tonumber(temperature) or -999) == tonumber(temperature),
+      "temperature must be an integer number")
+  end
+
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/deviceControlForOpenApi", {
     deviceId = string.format("%d", device_id),
