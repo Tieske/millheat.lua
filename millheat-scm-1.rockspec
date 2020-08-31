@@ -2,7 +2,7 @@ package = "millheat"
 version = "scm-1"
 
 source = {
-  url = "git://github.com/Tieske/millheat.lua",
+  url = "git://github.com/Tieske/millheat.lua/", -- trailing slash to workaround luarocks bug
   --tag = "0.1.0",
   branch = "master",
 }

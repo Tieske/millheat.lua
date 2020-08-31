@@ -11,7 +11,6 @@ Early development, session management works, all current methods implemented
 
 ### TODO:
 
-- remove the insecure TLSv1 requirement!!
 - maybe: ad a higher level Lua interface with object based access
 
 ## History
