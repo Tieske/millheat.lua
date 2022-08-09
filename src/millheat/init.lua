@@ -426,11 +426,17 @@ end
 
 
 --- Gets the list of rooms associated with a home.
--- @tparam string home_id the home for which to get the list of rooms
+-- @tparam string|number home_id the home for which to get the list of rooms
 -- @return list, or nil+err
 function millheat:get_rooms_by_home(home_id)
+  if type(home_id) ~= "string" then
+    if type(home_id) ~= "number" then
+      error("expected home_id to be a string or number")
+    end
+    home_id = string.format("%d", home_id)
+  end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome", { homeId = string.format("%d", home_id) }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome", { homeId = home_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get room list: %s", response_body)
     return nil, "failed to get room list: "..response_body
@@ -441,11 +447,17 @@ end
 
 
 --- Gets the list of devices associated with a room.
--- @tparam string room_id the room for which to get the list of devices
+-- @tparam string|number room_id the room for which to get the list of devices
 -- @return list, or nil+err
 function millheat:get_devices_by_room(room_id)
+  if type(room_id) ~= "string" then
+    if type(room_id) ~= "number" then
+      error("expected room_id to be a string or number")
+    end
+    room_id = string.format("%d", room_id)
+  end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom", { roomId = string.format("%d", room_id) }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom", { roomId = room_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get device list: %s", response_body)
     return nil, "failed to get device list: "..response_body
@@ -456,11 +468,17 @@ end
 
 
 --- Gets the list of independent devices not associated with a room.
--- @tparam string home_id the home for which to get the list of independent devices
+-- @tparam string|number home_id the home for which to get the list of independent devices
 -- @return list, or nil+err
 function millheat:get_independent_devices_by_home(home_id)
+  if type(home_id) ~= "string" then
+    if type(home_id) ~= "number" then
+      error("expected home_id to be a string or number")
+    end
+    home_id = string.format("%d", home_id)
+  end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices", { homeId = string.format("%d", home_id) }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices", { homeId = home_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get independent devices list: %s", response_body)
     return nil, "failed to get independent devices list: "..response_body
@@ -471,7 +489,7 @@ end
 
 
 --- Controls a specific device.
--- @tparam string device_id the device to control
+-- @tparam string|number device_id the device to control
 -- @tparam "temperature"|"switch" operation the operation to perform
 -- @tparam "room"|"single"|"on"|"off"|true|false status either "room" or single" (for a `temperature` operation), or "on"/true or "off"/false (for a `switch` operation).
 -- @tparam[opt] number temperature the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
@@ -484,6 +502,13 @@ end
 --   print("failed to control the device: ", err)
 -- end
 function millheat:control_device(device_id, operation, status, temperature)
+
+  if type(device_id) ~= "string" then
+    if type(device_id) ~= "number" then
+      error("expected device_id to be a string or number")
+    end
+    device_id = string.format("%d", device_id)
+  end
 
   status = tostring(status):lower()
   operation = tostring(operation):lower()
@@ -522,7 +547,7 @@ function millheat:control_device(device_id, operation, status, temperature)
 
 
   local ok, response_body = self:rewrite_error(200, self:request("/uds/deviceControlForOpenApi", {
-    deviceId = string.format("%d", device_id),
+    deviceId = device_id,
     holdTemp = temperature,
     operation = operation,
     status = status,
