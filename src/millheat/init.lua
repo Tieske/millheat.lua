@@ -488,6 +488,27 @@ function millheat:get_independent_devices_by_home(home_id)
 end
 
 
+--- Gets the device data.
+-- @tparam string|number device_id the device for which to get the data
+-- @return list, or nil+err
+function millheat:get_device(device_id)
+  if type(device_id) ~= "string" then
+    if type(device_id) ~= "number" then
+      error("expected home_id to be a string or number")
+    end
+    device_id = string.format("%d", device_id)
+  end
+
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevice2020", { deviceId = device_id }))
+  if not ok then
+    millheat.log:error("[millheat] failed to get device data: %s", response_body)
+    return nil, "failed to get device data: "..response_body
+  end
+
+  return response_body.data.deviceInfo
+end
+
+
 --- Controls a specific device.
 -- @tparam string|number device_id the device to control
 -- @tparam "temperature"|"switch" operation the operation to perform
