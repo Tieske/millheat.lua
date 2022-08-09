@@ -436,7 +436,7 @@ function millheat:get_rooms_by_home(home_id)
     home_id = string.format("%d", home_id)
   end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome", { homeId = home_id }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome2020", { homeId = home_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get room list: %s", response_body)
     return nil, "failed to get room list: "..response_body
@@ -457,7 +457,7 @@ function millheat:get_devices_by_room(room_id)
     room_id = string.format("%d", room_id)
   end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom", { roomId = room_id }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom2020", { roomId = room_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get device list: %s", response_body)
     return nil, "failed to get device list: "..response_body
@@ -478,7 +478,7 @@ function millheat:get_independent_devices_by_home(home_id)
     home_id = string.format("%d", home_id)
   end
 
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices", { homeId = home_id }))
+  local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices2020", { homeId = home_id }))
   if not ok then
     millheat.log:error("[millheat] failed to get independent devices list: %s", response_body)
     return nil, "failed to get independent devices list: "..response_body
