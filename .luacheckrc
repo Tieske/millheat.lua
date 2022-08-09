@@ -1,4 +1,4 @@
-std             = "ngx_lua+busted"
+std             = "+busted"
 unused_args     = false
 redefined       = false
 max_line_length = false

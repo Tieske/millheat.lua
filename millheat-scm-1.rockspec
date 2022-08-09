@@ -1,10 +1,17 @@
-package = "millheat"
-version = "scm-1"
+local package_name = "millheat"
+local package_version = "scm"
+local rockspec_revision = "1"
+local github_account_name = "Tieske"
+local github_repo_name = package_name..".lua"
+
+
+package = package_name
+version = package_version.."-"..rockspec_revision
 
 source = {
-  url = "git://github.com/Tieske/millheat.lua/", -- trailing slash to workaround luarocks bug
-  --tag = "0.1.0",
-  branch = "master",
+  url = "git+https://github.com/"..github_account_name.."/"..github_repo_name.."/",
+  branch = (package_version == "scm") and "master" or nil,
+  tag = (package_version ~= "scm") and package_version or nil,
 }
 
 description = {
@@ -12,12 +19,12 @@ description = {
   detailed = [[
     Library to access the Millheat REST API.
   ]],
-  homepage = "https://github.com/Tieske/millheat.lua",
+  homepage = "https://github.com/"..github_account_name.."/"..github_repo_name,
   license = "MIT"
 }
 
 dependencies = {
-  "lua >= 5.1, < 5.4",
+  "lua >= 5.1, < 5.5",
   "luasec",
   "cjson",
   "lualogging",

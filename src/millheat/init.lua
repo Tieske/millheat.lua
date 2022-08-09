@@ -3,10 +3,14 @@
 -- This library implements the session management and makes it easy to access
 -- individual endpoints of the API.
 --
--- @author Thijs Schreijer, http://www.thijsschreijer.nl
+-- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
--- @copyright 2019-2020 Thijs Schreijer
+-- @copyright 2020-2022 Thijs Schreijer
 -- @release Version x.x, Library to acces the Millheat API
+-- @usage
+-- local millheat = require "millheat"
+-- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+-- local home_list, err = mhsession:get_homes()
 
 local url = require "socket.url"
 local ltn12 = require "ltn12"
@@ -264,10 +268,10 @@ end
 
 
 --- Creates a new Millheat session instance.
--- @param access_key (string) required, the access_key to use for login
--- @param secret_token (string) required, the secret_token to use for login
--- @param username (string) required, the username to use for login
--- @param password (string) required, the password to use for login
+-- @tparam string access_key the `access_key` to use for login
+-- @tparam string secret_token the `secret_token` to use for login
+-- @tparam string username the `username` to use for login
+-- @tparam string password the `password` to use for login
 -- @return Millheat session object
 -- @usage
 -- local millheat = require "millheat"
@@ -295,9 +299,9 @@ end
 --
 -- NOTE: if the response_body is json, then it will be decoded and returned as
 -- a Lua table.
--- @param path (string) the relative path within the API base path
--- @param query (table) optional query parameters (will be escaped)
--- @return ok, response_body, response_code, response_headers, response_status_line
+-- @tparam string path the relative path within the API base path
+-- @tparam[opt] table query query parameters (will be escaped)
+-- @return `ok`, `response_body`, `response_code`, `response_headers`, `response_status_line`
 -- @usage
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
@@ -307,8 +311,11 @@ end
 -- -- the following line will automatically log in
 -- local ok, response_body, status, headers, statusline = mhsession:request("/some/path", query)
 function millheat:request(path, query)
-  local headers = { access_token = get_access_token(self) } -- this will auto-login
-  return mill_request(path, "POST", headers, query, nil)
+  local access_token, err = get_access_token(self) -- this will auto-login
+  if not access_token then
+    return access_token, err
+  end
+  return mill_request(path, "POST", { access_token = access_token }, query, nil)
 end
 
 
@@ -321,15 +328,15 @@ end
 --
 -- This reduces the error handling to standard Lua errors, instead of having to
 -- validate each of the situations above individually.
--- @param expected (number) optional expected status code, if nil, it will be ignored
+-- @tparam[opt] number expected expected status code, if `nil`, it will be ignored
 -- @param ... same parameters as the `request` method
--- @return nil+err or the input arguments
+-- @return `nil+err` or the input arguments
 -- @usage
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new("myself@nothere.com", "secret_password")
 --
 -- -- Make a request where we expect a 200 result
--- local ok, response_body, status, headers, statusline = mhsession:rewrite_error(200, mhsession:request("/attributes", "GET"))
+-- local ok, response_body, status, headers, statusline = mhsession:rewrite_error(200, mhsession:request("/some/path"))
 -- if not ok then
 --   return nil, response_body -- a 404 will also follow this path now, since we only want 200's
 -- end
@@ -419,7 +426,7 @@ end
 
 
 --- Gets the list of rooms associated with a home.
--- @param home_id the home for which to get the list of rooms
+-- @tparam string home_id the home for which to get the list of rooms
 -- @return list, or nil+err
 function millheat:get_rooms_by_home(home_id)
 
@@ -434,7 +441,7 @@ end
 
 
 --- Gets the list of devices associated with a room.
--- @param room_id the room for which to get the list of devices
+-- @tparam string room_id the room for which to get the list of devices
 -- @return list, or nil+err
 function millheat:get_devices_by_room(room_id)
 
@@ -449,7 +456,7 @@ end
 
 
 --- Gets the list of independent devices not associated with a room.
--- @param home_id the home for which to get the list of independent devices
+-- @tparam string home_id the home for which to get the list of independent devices
 -- @return list, or nil+err
 function millheat:get_independent_devices_by_home(home_id)
 
@@ -464,10 +471,10 @@ end
 
 
 --- Controls a specific device.
--- @param device_id the device to control
--- @param operation (string, either "temperature" or "switch") the operation to perform
--- @param status (string) for a temperature operation either "room" or single". For a switch operation either "on" or "off" (or a boolean true/false).
--- @param temperature (integer) the temperature to set, only has an effect with "temperature"+"single" operation and status.
+-- @tparam string device_id the device to control
+-- @tparam "temperature"|"switch" operation the operation to perform
+-- @tparam "room"|"single"|"on"|"off"|true|false status either "room" or single" (for a `temperature` operation), or "on"/true or "off"/false (for a `switch` operation).
+-- @tparam[opt] number temperature the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
 -- @return true or nil+err
 -- @usage
 -- local millheat = require "millheat"
@@ -488,7 +495,7 @@ function millheat:control_device(device_id, operation, status, temperature)
     elseif status == "room" then
       status = "0"
     else
-      return nil, "with operation 'temperature', status must be either 'single' or 'room', got: ".. status
+      error("with operation 'temperature', status must be either 'single' or 'room', got: " .. status)
     end
 
   elseif operation == "switch" then
@@ -499,17 +506,18 @@ function millheat:control_device(device_id, operation, status, temperature)
     elseif status == "off" or status == "false" then
       status = "0"
     else
-      return nil, "with operation 'switch', status must be either 'on'/true or 'off'/false, got: ".. status
+      error("with operation 'switch', status must be either 'on'/true or 'off'/false, got: " .. status)
     end
 
   else
-    return nil, "operation must be either 'temperature' or 'switch', got: ".. operation
+    error("operation must be either 'temperature' or 'switch', got: " .. operation)
   end
 
   if operation == "1" and status == "1" then
-    temperature = tostring(temperature)
-    assert(math.floor(tonumber(temperature) or -999) == tonumber(temperature),
-      "temperature must be an integer number")
+    if type(temperature) ~= "number" then
+      error("temperature must be a number, got: " .. type(temperature))
+    end
+    temperature = tostring(math.floor(temperature + 0.5))
   end
 
 
