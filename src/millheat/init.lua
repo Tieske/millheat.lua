@@ -3,6 +3,8 @@
 -- This library implements the session management and makes it easy to access
 -- individual endpoints of the API.
 --
+-- API documentation: [https://api.millheat.com/share/apidocument](https://api.millheat.com/share/apidocument).
+--
 -- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
 -- @copyright 2020-2022 Thijs Schreijer
@@ -446,6 +448,7 @@ end
 
 
 --- Gets the list of homes.
+-- Invokes the `/uds/selectHomeList` endpoint.
 -- @return list, or nil+err
 -- @usage
 -- local millheat = require "millheat"
@@ -464,6 +467,7 @@ end
 
 
 --- Gets the list of rooms associated with a home.
+-- Invokes the `/uds/selectRoombyHome2020` endpoint.
 -- @tparam string|number home_id the home for which to get the list of rooms
 -- @return list, or nil+err
 function millheat:get_rooms_by_home(home_id)
@@ -485,6 +489,7 @@ end
 
 
 --- Gets the list of devices associated with a room.
+-- Invokes the `/uds/selectDevicebyRoom2020` endpoint.
 -- @tparam string|number room_id the room for which to get the list of devices
 -- @return list, or nil+err
 function millheat:get_devices_by_room(room_id)
@@ -506,6 +511,7 @@ end
 
 
 --- Gets the list of independent devices not associated with a room.
+-- Invokes the `/uds/getIndependentDevices2020` endpoint.
 -- @tparam string|number home_id the home for which to get the list of independent devices
 -- @return list, or nil+err
 function millheat:get_independent_devices_by_home(home_id)
@@ -527,6 +533,7 @@ end
 
 
 --- Gets the device data.
+-- Invokes the `/uds/selectDevice2020` endpoint.
 -- @tparam string|number device_id the device for which to get the data
 -- @return list, or nil+err
 function millheat:get_device(device_id)
@@ -548,6 +555,7 @@ end
 
 
 --- Controls a specific device.
+-- Invokes the `/uds/deviceControlForOpenApi` endpoint.
 -- @tparam string|number device_id the device to control
 -- @tparam "temperature"|"switch" operation the operation to perform
 -- @tparam "room"|"single"|"on"|"off"|true|false status either "room" or single" (for a `temperature` operation), or "on"/true or "off"/false (for a `switch` operation).
