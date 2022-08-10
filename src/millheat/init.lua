@@ -20,7 +20,7 @@ local socket = require "socket"
 local millheat = {}
 local millheat_mt = { __index = millheat }
 
-
+local session_cache = setmetatable({}, { __mode = "v" })
 
 
 local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' -- You will need this for encoding/decoding
@@ -59,6 +59,11 @@ millheat.log = require("millheat.log")
 
 
 
+
+local function get_session_cache_key(self)
+  local sep = "|"
+  return self.access_key .. sep .. self.secret_token .. sep .. self.username ..sep .. self.password
+end
 
 -- Performs a HTTP request on the Millheat API.
 -- @param path (string) the relative path within the API base path
@@ -268,6 +273,8 @@ end
 
 
 --- Creates a new Millheat session instance.
+-- If a session for the credentials already exists, the existing session is
+-- returned. See `millheat.logout` for destroying sessions.
 -- @tparam string access_key the `access_key` to use for login
 -- @tparam string secret_token the `secret_token` to use for login
 -- @tparam string username the `username` to use for login
@@ -287,8 +294,18 @@ function millheat.new(access_key, secret_token, username, password)
     username = assert(username, "3rd parameter, 'username' is missing"),
     password = assert(password, "4th parameter, 'password' is missing"),
   }
+  local key = get_session_cache_key(self)
+  local session = session_cache[key]
+  if session then
+    -- session already exists
+    millheat.log:debug("[millheat] returning existing instance from cache for %s", self.username)
+    return session
+  end
+
+  setmetatable(self, millheat_mt)
+  session_cache[key] = self
   millheat.log:info("[millheat] created new instance for %s", self.username)
-  return setmetatable(self, millheat_mt)
+  return self
 end
 
 
@@ -364,6 +381,9 @@ end
 --- Logs out of the current session.
 -- There is no real logout option with this API. Hence this only deletes
 -- the locally stored tokens.
+-- @tparam bool clear if truthy, the current session is removed from the session
+-- cache, and the next call to `millheat.new` will create a new session instead
+-- of reusing the cached one.
 -- @return `true`
 -- @usage
 -- local millheat = require "millheat"
@@ -374,9 +394,13 @@ end
 -- else
 --   mhsession:logout()
 -- end
-function millheat:logout()
+function millheat:logout(clear)
   millheat.log:info("[millheat] logout for %s", self.username)
   set_tokens(self, nil, nil)
+  if clear then
+    millheat.log:debug("[millheat] clearing session from cache for %s", self.username)
+    session_cache[get_session_cache_key(self)] = nil
+  end
 end
 
 
