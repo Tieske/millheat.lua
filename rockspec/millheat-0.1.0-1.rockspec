@@ -35,4 +35,7 @@ build = {
     ["millheat.init"] = "src/millheat/init.lua",
     ["millheat.compat"] = "src/millheat/compat.lua",
   },
+  copy_directories = {
+    "docs",
+ },
 }
