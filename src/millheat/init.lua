@@ -11,6 +11,17 @@
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
 -- local home_list, err = mhsession:get_homes()
+--
+-- -- or using the Copas scheduler
+-- local copas = require "copas"
+--
+-- copas.addthread(function()
+--   local millheat = require "millheat"
+--   local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+--   local home_list, err = mhsession:get_homes()
+-- end)
+--
+-- copas.loop()
 
 local url = require "socket.url"
 local ltn12 = require "ltn12"
@@ -48,14 +59,17 @@ end
 
 local BASE_URL="https://api.millheat.com:443"
 local CLOCK_SKEW = 5 * 60 -- clock skew in seconds to allow when refreshing tokens
--- https method is set on the module table, such that it can be overridden
--- by another implementation (eg. Copas)
-millheat.https = require "ssl.https"
--- Logger is set on the module table, to be able to override it
--- supports: debug, info, warn, error, fatal
--- log:debug([message]|[table]|[format, ...]|[function, ...])
-millheat.log = require("millheat.log")
 
+do
+  local compat = require "millheat.compat"
+  -- https method is set on the module table, such that it can be overridden
+  -- by another implementation (eg. Copas)
+  millheat.https = compat.https
+  -- Logger is set on the module table, to be able to override it
+  -- supports: debug, info, warn, error, fatal
+  -- log:debug([message]|[table]|[format, ...]|[function, ...])
+  millheat.log = compat.log
+end
 
 
 
@@ -537,7 +551,7 @@ end
 -- @tparam string|number device_id the device to control
 -- @tparam "temperature"|"switch" operation the operation to perform
 -- @tparam "room"|"single"|"on"|"off"|true|false status either "room" or single" (for a `temperature` operation), or "on"/true or "off"/false (for a `switch` operation).
--- @tparam[opt] number temperature the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
+-- @tparam number temperature the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
 -- @return true or nil+err
 -- @usage
 -- local millheat = require "millheat"

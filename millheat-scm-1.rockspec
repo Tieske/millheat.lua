@@ -26,14 +26,13 @@ description = {
 dependencies = {
   "lua >= 5.1, < 5.5",
   "luasec",
-  "cjson",
-  "lualogging",
+  "lua-cjson",
 }
 
 build = {
   type = "builtin",
   modules = {
     ["millheat.init"] = "src/millheat/init.lua",
-    ["millheat.log"] = "src/millheat/log.lua",
+    ["millheat.compat"] = "src/millheat/compat.lua",
   },
 }
