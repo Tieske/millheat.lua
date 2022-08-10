@@ -192,7 +192,7 @@ local function get_refresh_token(self)
   end
 
   -- login and get tokens
-  millheat.log:debug("[millheat] refresh_token expired/unavailable, getting authorization_code for %s", self.username)
+  millheat.log:info("[millheat] refresh_token expired/unavailable, getting authorization_code for %s", self.username)
   local ok, response_body = self:rewrite_error(200,
     mill_request("/share/applyAuthCode", "POST", {
         access_key = self.access_key,
@@ -213,7 +213,7 @@ local function get_refresh_token(self)
     authorization_code = authorization_code,
   }
 
-  millheat.log:debug("[millheat] getting refresh_token for %s", self.username)
+  millheat.log:info("[millheat] getting refresh_token for %s", self.username)
   ok, response_body = self:rewrite_error(200, mill_request("/share/applyAccessToken", "POST", headers, query))
   if not ok then
     millheat.log:error("[millheat] failed to get access and refresh tokens: %s", response_body)
@@ -238,7 +238,7 @@ local function get_access_token(self)
   end
 
   -- no access token, or expired
-  millheat.log:debug("[millheat] access_token expired/unavailable for %s", self.username)
+  millheat.log:info("[millheat] access_token expired/unavailable for %s", self.username)
   local refresh, err = get_refresh_token(self)
   if not refresh then
     return nil, err
@@ -248,7 +248,7 @@ local function get_access_token(self)
     -- the access token wasn't updated while fetching the refresh token
     -- essentially: access was expired, refresh still valid, so we need to
     -- make a refresh call
-    millheat.log:debug("[millheat] getting access_token for %s", self.username)
+    millheat.log:info("[millheat] getting access_token for %s", self.username)
     local ok, response_body = self:rewrite_error(200,
       mill_request("/share/refreshtoken", "POST", nil, {
         refreshtoken = refresh,
@@ -287,7 +287,7 @@ function millheat.new(access_key, secret_token, username, password)
     username = assert(username, "3rd parameter, 'username' is missing"),
     password = assert(password, "4th parameter, 'password' is missing"),
   }
-  millheat.log:debug("[millheat] created new instance for %s", self.username)
+  millheat.log:info("[millheat] created new instance for %s", self.username)
   return setmetatable(self, millheat_mt)
 end
 
@@ -375,7 +375,7 @@ end
 --   mhsession:logout()
 -- end
 function millheat:logout()
-  millheat.log:debug("[millheat] logout for %s", self.username)
+  millheat.log:info("[millheat] logout for %s", self.username)
   set_tokens(self, nil, nil)
 end
 
@@ -393,7 +393,7 @@ end
 --   print("failed to login: ", err)
 -- end
 function millheat:login()
-  millheat.log:debug("[millheat] logging in for %s", self.username)
+  millheat.log:info("[millheat] logging in for %s", self.username)
   local access, err = get_access_token(self)  -- will force a login if required
   return access and true, err
 end
