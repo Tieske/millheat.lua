@@ -34,5 +34,6 @@ build = {
   type = "builtin",
   modules = {
     ["millheat.init"] = "src/millheat/init.lua",
+    ["millheat.log"] = "src/millheat/log.lua",
   },
 }

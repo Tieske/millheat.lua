@@ -54,7 +54,7 @@ millheat.https = require "ssl.https"
 -- Logger is set on the module table, to be able to override it
 -- supports: debug, info, warn, error, fatal
 -- log:debug([message]|[table]|[format, ...]|[function, ...])
-millheat.log = require("logging.console")()
+millheat.log = require("millheat.log")
 
 
 
