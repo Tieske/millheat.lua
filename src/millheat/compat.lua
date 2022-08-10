@@ -1,6 +1,7 @@
 --- Compatibility module for Copas and LuaLogging.
--- To use LuaLogging or the Copas scheduler, ensure to load those libs before
--- loading the `millheat` module.
+-- To use [LuaLogging](https://lunarmodules.github.io/lualogging/) or the
+-- [Copas scheduler](https://lunarmodules.github.io/copas/), ensure to load
+-- those libs before loading the `millheat` module.
 -- @usage
 -- local copas = require "copas"
 -- local ll = require "logging"

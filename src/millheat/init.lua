@@ -8,7 +8,7 @@
 -- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
 -- @copyright 2020-2022 Thijs Schreijer
--- @release Version x.x, Library to acces the Millheat API
+-- @release Version 0.1, Library to access the Millheat API
 -- @usage
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
