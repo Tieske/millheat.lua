@@ -462,7 +462,11 @@ function millheat:get_homes()
     return nil, "failed to get home list: "..response_body
   end
 
-  return response_body.data.homeList
+  if response_body.data.homeList then
+    return response_body.data.homeList
+  end
+
+  return nil, "no homeList received, response body: " .. json.encode(response_body)
 end
 
 
@@ -484,7 +488,11 @@ function millheat:get_rooms_by_home(home_id)
     return nil, "failed to get room list: "..response_body
   end
 
-  return response_body.data.roomList
+  if response_body.data.roomList then
+    return response_body.data.roomList
+  end
+
+  return nil, "no roomList received, response body: " .. json.encode(response_body)
 end
 
 
@@ -506,7 +514,11 @@ function millheat:get_devices_by_room(room_id)
     return nil, "failed to get device list: "..response_body
   end
 
-  return response_body.data.deviceList
+  if response_body.data.deviceList then
+    return response_body.data.deviceList
+  end
+
+  return nil, "no deviceList received, response body: " .. json.encode(response_body)
 end
 
 
@@ -528,7 +540,11 @@ function millheat:get_independent_devices_by_home(home_id)
     return nil, "failed to get independent devices list: "..response_body
   end
 
-  return response_body.data.deviceInfoList
+  if response_body.data.deviceInfoList then
+    return response_body.data.deviceInfoList
+  end
+
+  return nil, "no deviceInfoList received, response body: " .. json.encode(response_body)
 end
 
 
@@ -550,7 +566,11 @@ function millheat:get_device(device_id)
     return nil, "failed to get device data: "..response_body
   end
 
-  return response_body.data.deviceInfo
+  if response_body.data.deviceInfo then
+    return response_body.data.deviceInfo
+  end
+
+  return nil, "no deviceInfo received, response body: " .. json.encode(response_body)
 end
 
 

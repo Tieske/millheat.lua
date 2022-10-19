@@ -34,4 +34,8 @@ See [LICENSE](https://github.com/Tieske/millheat.lua/blob/master/LICENSE)
 
 ### Version 0.1, released 10-Aug-2022
 
-* initial release
+#### unreleased
+
+* fix: better error messages in case data elements are missing
+
+#### initial release
