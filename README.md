@@ -32,10 +32,10 @@ See [LICENSE](https://github.com/Tieske/millheat.lua/blob/master/LICENSE)
 * render the docs using `ldoc`
 * commit, tag, and push
 
-### Version 0.1, released 10-Aug-2022
-
-#### unreleased
+### Version 0.2.0, released 22-Oct-2022
 
 * fix: better error messages in case data elements are missing
 
-#### initial release
+### Version 0.1.0, released 10-Aug-2022
+
+* initial release
