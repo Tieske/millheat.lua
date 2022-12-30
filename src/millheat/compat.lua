@@ -5,7 +5,7 @@
 -- @usage
 -- local copas = require "copas"
 -- local ll = require "logging"
--- local mh = require "millheat"
+-- local mh = require "millheat"   -- require this last
 
 
 local compat = {}

@@ -12,7 +12,7 @@ LuaLogging for log output if available.
 Early development, session management works, all basic methods implemented. The
 newer control endpoints can be used, but do not have their own functions yet.
 
-### TODO:
+### TODO
 
 - implement newer control endpoints
 - maybe: add a higher level Lua interface with object based access
@@ -23,19 +23,23 @@ See [LICENSE](https://github.com/Tieske/millheat.lua/blob/master/LICENSE)
 
 ## History
 
-### Release instructions:
+### Release instructions
 
-* update the version number and copyright year (ldoc header in `init.lua`)
-* update copyright years in `LICENSE` file)
-* ensure changelog is up-to-date
-* add a rockspec for the new version
-* render the docs using `ldoc`
-* commit, tag, and push
+- update the version number and copyright year (ldoc header in `init.lua`)
+- update copyright years in `LICENSE` file)
+- ensure changelog is up-to-date
+- add a rockspec for the new version
+- render the docs using `ldoc`
+- commit, tag, and push
+
+### Version 0.3.0, released 30-Dec-2022
+
+- change: convert millheat specific internal errors to generic http response codes
 
 ### Version 0.2.0, released 22-Oct-2022
 
-* fix: better error messages in case data elements are missing
+- fix: better error messages in case data elements are missing
 
 ### Version 0.1.0, released 10-Aug-2022
 
-* initial release
+- initial release
