@@ -5,6 +5,15 @@
 --
 -- API documentation: [https://api.millheat.com/share/apidocument](https://api.millheat.com/share/apidocument).
 --
+-- The API has some weird behaviour, it very much looks like a Java RPC API instead
+-- of a REST-full http api.
+--
+-- - versioning is done by new methods with a date in their name
+-- - temperature reports (number) can return `"--.-"` (string) if a value is
+--   (temporarily) absent, instead of a more appropriate `json.NULL` value
+-- - reports 200 success, but internally still reports an error (this behaviour is
+--   dealt with by the `rewrite_error` method).
+--
 -- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
 -- @copyright 2020-2022 Thijs Schreijer
@@ -143,11 +152,11 @@ local function mill_request(path, method, headers, query, body)
       break
     end
   end
---print("Response: "..require("pl.pretty").write({
---  body = response_body,
---  status = response_code,
---  headers = response_headers,
---}))
+-- print("Response: "..require("pl.pretty").write({
+--   body = response_body,
+--   status = response_code,
+--   headers = response_headers,
+-- }))
   millheat.log:debug("[millheat] api request returned: %s", response_code)
 
   return ok, response_body, response_code, response_headers, response_status_line
@@ -357,6 +366,8 @@ end
 --
 -- - nil+err
 -- - body with "success = false" (some API calls return a 200 with success=false for example)
+-- - API based errorCode values will be updated to equivalent HTTP statussses
+--   ( 0 == http 200, < 200 == http 500, < 300 == http 401, < 400 == http 400, else 500)
 -- - mismatch in expected status code (a 200 expected, but a 404 received)
 --
 -- This reduces the error handling to standard Lua errors, instead of having to
@@ -378,15 +389,36 @@ function millheat:rewrite_error(expected, ok, body, status, headers, ...)
     return ok, body
   end
 
-  if type(body) == "table" and body.success == false then
-    return nil, tostring(status)..": "..json.encode(body)
+  local err
+
+  if type(body) == "table" and body.errorCode ~= 0 then
+    -- update the Millheat errors to equivalent HTTP statusses
+    -- see https://api.millheat.com/share/apidocument#errorCode
+    if body.errorCode < 200 then
+      status = 500  -- Internal server error
+    elseif body.errorCode < 300 then
+      status = 401  -- Forbidden
+    elseif body.errorCode < 400 then
+      status = 400  -- Bad request
+    else
+      status = 500  -- Internal server error, just as a catch-all, since it wasn't 0
+    end
+    err = body.message
   end
 
   if expected ~= nil and expected ~= status then
-    if type(body) == "table" then
-      body = json.encode({body = body, headers = headers})
+    if not err then
+      if type(body) == "table" then
+        err = json.encode({body = body, headers = headers})
+      else
+        err = tostring(body)
+      end
     end
-    return nil, "bad return code, expected " .. expected .. ", got "..status..". Response: "..body
+    return nil, "bad return code, expected " .. expected .. ", got "..status..": "..err
+  end
+
+  if type(body) == "table" and body.success == false then
+    return nil, tostring(status)..": "..json.encode(body)
   end
 
   return ok, body, status, headers, ...
