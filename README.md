@@ -9,12 +9,10 @@ LuaLogging for log output if available.
 
 ## Status
 
-Early development, session management works, all basic methods implemented. The
-newer control endpoints can be used, but do not have their own functions yet.
+Early development, session management works, all basic methods implemented.
 
 ### TODO
 
-- implement newer control endpoints
 - maybe: add a higher level Lua interface with object based access
 
 ## License & Copyright
@@ -31,6 +29,10 @@ See [LICENSE](https://github.com/Tieske/millheat.lua/blob/master/LICENSE)
 - add a rockspec for the new version
 - render the docs using `ldoc`
 - commit, tag, and push
+
+### unreleased
+
+- BREAKING: reimplement the core, based on the new REST API.
 
 ### Version 0.3.0, released 30-Dec-2022
 

@@ -3,33 +3,47 @@
 -- This library implements the session management and makes it easy to access
 -- individual endpoints of the API.
 --
--- API documentation: [https://api.millheat.com/share/apidocument](https://api.millheat.com/share/apidocument).
---
--- The API has some weird behaviour, it very much looks like a Java RPC API instead
--- of a REST-full http api.
---
--- - versioning is done by new methods with a date in their name
--- - temperature reports (number) can return `"--.-"` (string) if a value is
---   (temporarily) absent, instead of a more appropriate `json.NULL` value
--- - reports 200 success, but internally still reports an error (this behaviour is
---   dealt with by the `rewrite_error` method).
+-- API documentation: [http://mn-be-prod-documentation.s3-website.eu-central-1.amazonaws.com/#/](http://mn-be-prod-documentation.s3-website.eu-central-1.amazonaws.com/#/).
 --
 -- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
--- @copyright 2020-2022 Thijs Schreijer
+-- @copyright 2020-2024 Thijs Schreijer
 -- @release Version 0.3.0, Library to access the Millheat API
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
--- local home_list, err = mhsession:get_homes()
+-- local mhsession = millheat.new {
+--   -- use username/password OR apikey, not both!
+--   username = "name@email.org",
+--   password = "secret_password",
+--   -- api_key = "xyz",
+-- }
 --
+-- local ok, data = self:srequest("GET:/houses/{houseId}/rooms", { houseId = "some-id-here" })
+-- if not ok then
+--   print("failed to get rooms: ", data)
+-- end
+--
+-- mhsession:logout()
+--
+-- @usage
 -- -- or using the Copas scheduler
 -- local copas = require "copas"
 --
 -- copas.addthread(function()
 --   local millheat = require "millheat"
---   local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
---   local home_list, err = mhsession:get_homes()
+--   local mhsession = millheat.new {
+--     -- use username/password OR apikey, not both!
+--     username = "name@email.org",
+--     password = "secret_password",
+--     -- api_key = "xyz",
+--   }
+--
+--   local ok, data = self:srequest("GET:/houses/{houseId}/rooms", { houseId = "some-id-here" })
+--   if not ok then
+--     print("failed to get rooms: ", data)
+--   end
+--
+--   mhsession:logout()
 -- end)
 --
 -- copas.loop()
@@ -39,6 +53,19 @@ local ltn12 = require "ltn12"
 local json = require "cjson.safe"
 local socket = require "socket"
 
+--- The module table containing some global settings and constants.
+-- @table millheat
+--
+-- @field https
+-- This is a function set on the module table, such that it can
+-- be overridden by another implementation. If [Copas](https://lunarmodules.github.io/copas/)) was
+-- loaded before this module then `copas.http` will be used, otherwise it
+-- uses the [LuaSec](https://github.com/lunarmodules/luasec) one (module `ssl.https`).
+--
+-- @field log
+-- Logger is set on the module table, to be able to override it.
+-- Default is the [LuaLogging](https://lunarmodules.github.io/lualogging/) default logger if LuaLogging
+-- was loaded before this module. Otherwise it uses a stub logger with only no-op functions.
 local millheat = {}
 local millheat_mt = { __index = millheat }
 
@@ -68,8 +95,8 @@ end
 -- @section Generic
 
 
-local BASE_URL="https://api.millheat.com:443"
-local CLOCK_SKEW = 5 * 60 -- clock skew in seconds to allow when refreshing tokens
+local BASE_URL="https://api.millnorwaycloud.com:443"
+local CLOCK_SKEW = 1 * 60 -- clock skew in seconds to allow when refreshing tokens
 
 do
   local compat = require "millheat.compat"
@@ -87,7 +114,7 @@ end
 
 local function get_session_cache_key(self)
   local sep = "|"
-  return self.access_key .. sep .. self.secret_token .. sep .. self.username ..sep .. self.password
+  return tostring(self.api_key) .. sep .. tostring(self.username) .. sep .. tostring(self.password)
 end
 
 -- Performs a HTTP request on the Millheat API.
@@ -216,59 +243,52 @@ end
 -- Gets the refresh token, if not set or expired, it will be automatically
 -- renewed.
 local function get_refresh_token(self)
+  assert(self.api_key == nil, "api_key based sessions do not have refresh tokens")
+
   if self.refresh_token and self.refresh_token_expires > socket.gettime() then
     -- refresh token still valid
     return self.refresh_token
   end
 
   -- login and get tokens
-  millheat.log:info("[millheat] refresh_token expired/unavailable, getting authorization_code for %s", self.username)
+  millheat.log:debug("[millheat] refresh_token expired/unavailable, logging in %s", self.username)
   local ok, response_body = self:rewrite_error(200,
-    mill_request("/share/applyAuthCode", "POST", {
-        access_key = self.access_key,
-        secret_token = self.secret_token,
+    mill_request("/customer/auth/sign-in", "POST", {}, nil, {
+        login = self.username,
+        password = self.password,
       })
   )
   if not ok then
-    millheat.log:error("[millheat] failed to get authorization_code: %s", response_body)
-    return nil, "failed to get authorization_code: "..response_body
-  end
-  local authorization_code = assert((response_body.data or {}).authorization_code, "response is missing authorization_code")
-
-  local query = {
-    username = self.username,
-    password = self.password,
-  }
-  local headers = {
-    authorization_code = authorization_code,
-  }
-
-  millheat.log:info("[millheat] getting refresh_token for %s", self.username)
-  ok, response_body = self:rewrite_error(200, mill_request("/share/applyAccessToken", "POST", headers, query))
-  if not ok then
-    millheat.log:error("[millheat] failed to get access and refresh tokens: %s", response_body)
-    return nil, "failed to get access and refresh tokens: "..response_body
+    millheat.log:error("[millheat] failed to login: %s", response_body)
+    return nil, "failed to login: "..response_body
   end
 
-  set_tokens(self, response_body.data.access_token, response_body.data.refresh_token)
+  set_tokens(self, response_body.idToken, response_body.refreshToken)
   return self.refresh_token
 end
 
 
 
--- gets the access token, if not set or expired, it will be automatically
--- fetched/refreshed.
-local function get_access_token(self)
+-- gets the authorization headers, if not set or expired, it will be automatically
+-- fetched/refreshed. If auth by API key then those headers will be returned.
+local function get_authorization_headers(self)
+  if self.api_key then
+    -- use api key, so look no further...
+    return { ["X-Api-Key"] = self.api_key }
+  end
+
   local now = socket.gettime()
   local access = self.access_token
 
   if access and self.access_token_expires > now then
     -- access token still valid
-    return access
+    return {
+      Authorization = "Bearer " .. access,
+    }
   end
 
   -- no access token, or expired
-  millheat.log:info("[millheat] access_token expired/unavailable for %s", self.username)
+  millheat.log:debug("[millheat] access_token expired/unavailable for %s", self.username)
   local refresh, err = get_refresh_token(self)
   if not refresh then
     return nil, err
@@ -278,10 +298,10 @@ local function get_access_token(self)
     -- the access token wasn't updated while fetching the refresh token
     -- essentially: access was expired, refresh still valid, so we need to
     -- make a refresh call
-    millheat.log:info("[millheat] getting access_token for %s", self.username)
+    millheat.log:debug("[millheat] getting access_token for %s", self.username)
     local ok, response_body = self:rewrite_error(200,
-      mill_request("/share/refreshtoken", "POST", nil, {
-        refreshtoken = refresh,
+      mill_request("/customer/auth/refresh", "POST", nil, {
+        Authorization = "Bearer " .. refresh,
       })
     )
     if not ok then
@@ -289,10 +309,12 @@ local function get_access_token(self)
       return nil, "failed to refresh the access token: "..response_body
     end
 
-    set_tokens(self, response_body.data.access_token, response_body.data.refresh_token)
+    set_tokens(self, response_body.idToken, response_body.refreshToken)
   end
 
-  return self.access_token
+  return {
+    Authorization = "Bearer " .. self.access_token,
+  }
 end
 
 
@@ -300,25 +322,40 @@ end
 --- Creates a new Millheat session instance.
 -- If a session for the credentials already exists, the existing session is
 -- returned. See `millheat.logout` for destroying sessions.
--- @tparam string access_key the `access_key` to use for login
--- @tparam string secret_token the `secret_token` to use for login
--- @tparam string username the `username` to use for login
--- @tparam string password the `password` to use for login
+--
+-- Use either `username+password` OR `api_key`, not both.
+-- @tparam table opts the options table, supporting the following options:
+-- @tparam[opt] string opts.username the `username` to use for login
+-- @tparam[opt] string opts.password the `password` to use for login
+-- @tparam[opt] string opts.api_key the `api_key` to use for login
 -- @return Millheat session object
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
 -- local ok, err = mhsession:login()
 -- if not ok then
 --   print("failed to login: ", err)
 -- end
-function millheat.new(access_key, secret_token, username, password)
+function millheat.new(opts)
+  assert(type(opts) == "table", "expected an options table, got: " .. type(opts))
+  if type(opts.api_key) == "string" then
+    assert(opts.username == nil and opts.password == nil, "when 'api_key' is set, 'username' and 'password' should not be set")
+  elseif opts.apikey == nil then
+    assert(type(opts.username) == "string", "expected a 'string' for 'username', got: " .. type(opts.username))
+    assert(type(opts.password) == "string", "expected a 'string' for 'password', got: " .. type(opts.password))
+  else
+    error("expected a 'api_key' to be a string or be omitted, got: " .. type(opts.apikey))
+  end
+
   local self = {
-    access_key = assert(access_key, "1st parameter, 'access_key' is missing"),
-    secret_token = assert(secret_token, "2nd parameter, 'secret_token' is missing"),
-    username = assert(username, "3rd parameter, 'username' is missing"),
-    password = assert(password, "4th parameter, 'password' is missing"),
+    username = opts.username or "[username unknown: api-key used]",
+    password = opts.password,
+    api_key = opts.api_key,
   }
+
   local key = get_session_cache_key(self)
   local session = session_cache[key]
   if session then
@@ -329,58 +366,126 @@ function millheat.new(access_key, secret_token, username, password)
 
   setmetatable(self, millheat_mt)
   session_cache[key] = self
-  millheat.log:info("[millheat] created new instance for %s", self.username)
+
+  millheat.log:debug("[millheat] created new instance for %s", self.username)
   return self
 end
 
 
 
 --- Performs a HTTP request on the Millheat API.
--- It will automatically inject authentication/session data. Or if not logged
+-- It will automatically inject authentication/session data. Or if not
 -- logged in yet, it will log in. If the session has expired it will be renewed.
 --
--- NOTE: if the response_body is json, then it will be decoded and returned as
+-- This method is a low-level method, and is used by the higher level `srequest`.
+-- The latter is recommended for use in most cases since it is easier to use and
+-- more readable.
+--
+-- NOTE: if the response_body is JSON, then it will be decoded and returned as
 -- a Lua table.
 -- @tparam string path the relative path within the API base path
+-- @tparam[opt="GET"] string method the http method to use (will be capitalized)
 -- @tparam[opt] table query query parameters (will be escaped)
+-- @tparam[opt] table|string body request body, a table will be encoded as json
 -- @return `ok`, `response_body`, `response_code`, `response_headers`, `response_status_line`
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
 --
--- local query = { ["param1"] = "value1" }
+-- local body = { param1 = "value1" }
 --
 -- -- the following line will automatically log in
--- local ok, response_body, status, headers, statusline = mhsession:request("/some/path", query)
-function millheat:request(path, query)
-  local access_token, err = get_access_token(self) -- this will auto-login
-  if not access_token then
-    return access_token, err
+-- local ok, response_body, status, headers, statusline = mhsession:request("/some/path", "GET", nil, body)
+function millheat:request(path, method, query, body)
+  local headers, err = get_authorization_headers(self) -- this will auto-login
+  if not headers then
+    return headers, err
   end
-  return mill_request(path, "POST", { access_token = access_token }, query, nil)
+
+  return mill_request(path, (method or "GET"):upper(), headers, query, body)
 end
 
+--- Smart HTTP request on the Millheat API.
+-- It will automatically inject authentication/session data, and login if required.
+-- Parameters will be injected in the path, remaining ones will be added to the query.
+-- Responses in `20x` range will be valid, anything else is returned as a Lua error.
+-- @tparam string path the relative path within the API base path, format: `"METHOD:/path/{param1}/to/{param2}"`. Method defaults to "GET".
+-- @tparam[opt] table params parameters, path parameters will be injected, others will be added to the query (they will be escaped).
+-- @tparam[opt] table|string body request body, a table will be encoded as json
+-- @return `ok`, `response_body`, `response_code`, `response_headers`, `response_status_line` or `nil+error`
+-- @usage
+-- local millheat = require "millheat"
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
+--
+-- local house_id = "xyz some id"
+--
+-- -- the following line will automatically log in, and fetch the data
+-- local ok, data = mhsession:srequest("GET:/houses/{houseId}/devices", {
+--   houseId = house_id,
+-- })
+-- if not ok then
+--   print("failed to get devices: ", data)
+-- end
+function millheat:srequest(path, params, body)
+  local method = path:match("^([a-zA-Z]+):")
+  if not method then
+    method = "GET"
+  else
+    path = path:sub(#method + 2, -1)
+  end
+
+  if path:sub(1,1) ~= "/" then
+    error("path must start with a '/', got: " .. path)
+  end
+
+  path = path:gsub("({[^}]+})", function (param)
+    local name = param:sub(2, -2)
+    local value = params[name]
+    if not value then
+      error("missing parameter: " .. name)
+    else
+      value = url.escape(value)
+    end
+    params[name] = nil
+    return value
+  end)
+
+  return self:rewrite_error({
+    [200] = 200,
+    [201] = 201,
+    [202] = 202,
+    [203] = 203,
+    [204] = 204,
+  }, self:request(path, method, params, body))
+end
 
 --- Rewrite errors to Lua format (nil+error).
 -- Takes the output of the `request` function and validates it for errors;
 --
 -- - nil+err
--- - body with "success = false" (some API calls return a 200 with success=false for example)
--- - API based errorCode values will be updated to equivalent HTTP statussses
---   ( 0 == http 200, < 200 == http 500, < 300 == http 401, < 400 == http 400, else 500)
 -- - mismatch in expected status code (a 200 expected, but a 404 received)
 --
 -- This reduces the error handling to standard Lua errors, instead of having to
 -- validate each of the situations above individually.
--- @tparam[opt] number expected expected status code, if `nil`, it will be ignored
+-- @tparam[opt] number|table expected expected status code, if `nil`, it will be ignored. If a table then the keys must be the allowed status codes.
 -- @param ... same parameters as the `request` method
--- @return `nil+err` or the input arguments
+-- @return `nil+err` on error, or the input arguments
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("myself@nothere.com", "secret_password")
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
 --
--- -- Make a request where we expect a 200 result
--- local ok, response_body, status, headers, statusline = mhsession:rewrite_error(200, mhsession:request("/some/path"))
+-- -- Make a request where we expect a 200 or 201 result
+-- expected = { 200 = true, 201 = true }
+-- local ok, response_body, status, headers, statusline = mhsession:rewrite_error(expected, mhsession:request("/some/path"))
 -- if not ok then
 --   return nil, response_body -- a 404 will also follow this path now, since we only want 200's
 -- end
@@ -389,36 +494,25 @@ function millheat:rewrite_error(expected, ok, body, status, headers, ...)
     return ok, body
   end
 
-  local err
-
-  if type(body) == "table" and body.errorCode ~= 0 then
-    -- update the Millheat errors to equivalent HTTP statusses
-    -- see https://api.millheat.com/share/apidocument#errorCode
-    if body.errorCode < 200 then
-      status = 500  -- Internal server error
-    elseif body.errorCode < 300 then
-      status = 401  -- Forbidden
-    elseif body.errorCode < 400 then
-      status = 400  -- Bad request
-    else
-      status = 500  -- Internal server error, just as a catch-all, since it wasn't 0
+  if expected ~= nil then
+    if type(expected) ~= "table" then
+      expected = { [expected] = true }
     end
-    err = body.message
-  end
 
-  if expected ~= nil and expected ~= status then
-    if not err then
+    if not expected[status] then
+      -- bad response code received
+      local err
       if type(body) == "table" then
         err = json.encode({body = body, headers = headers})
       else
         err = tostring(body)
       end
+      local list = {}
+      for key in pairs(expected) do
+        list[#list+1] = tostring(key)
+      end
+      return nil, "bad return code, expected one of: " .. table.concat(list, ",") .. ". Got "..status..": "..err
     end
-    return nil, "bad return code, expected " .. expected .. ", got "..status..": "..err
-  end
-
-  if type(body) == "table" and body.success == false then
-    return nil, tostring(status)..": "..json.encode(body)
   end
 
   return ok, body, status, headers, ...
@@ -427,15 +521,17 @@ end
 
 
 --- Logs out of the current session.
--- There is no real logout option with this API. Hence this only deletes
--- the locally stored tokens.
+-- This only applies to user/pwd login. Does nothing for API key auth.
 -- @tparam bool clear if truthy, the current session is removed from the session
 -- cache, and the next call to `millheat.new` will create a new session instead
 -- of reusing the cached one.
--- @return `true`
+-- @return `true` or `nil+err`
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
 -- local ok, err = mhsession:login()
 -- if not ok then
 --   print("failed to login: ", err)
@@ -443,30 +539,58 @@ end
 --   mhsession:logout()
 -- end
 function millheat:logout(clear)
-  millheat.log:info("[millheat] logout for %s", self.username)
+  millheat.log:debug("[millheat] logout for %s", self.username)
+  if self.api_key then
+    return true -- nothing to do here
+  end
+
+  if not self.refresh_token or self.refresh_token_expires <= socket.gettime() then
+    -- refresh token not set yet, or already expired
+    return true -- nothing to do here
+  end
+
+
+  local refresh_token = get_refresh_token(self)
+  local ok, response_body = self:rewrite_error(200,
+    mill_request("/customer/auth/sign-out", "DELETE", {
+      Authorization = "Bearer " .. refresh_token,
+    })
+  )
+
+  local err
+  if not ok then
+    err = "failed to logout: "..response_body
+    millheat.log:error("[millheat] %s", err)
+  end
+
   set_tokens(self, nil, nil)
+
   if clear then
     millheat.log:debug("[millheat] clearing session from cache for %s", self.username)
     session_cache[get_session_cache_key(self)] = nil
   end
+
+  return true
 end
 
 
 
 --- Logs in the current session.
--- This will automatically be called by the `request` method, if not logged in
--- already.
+-- This will automatically be called by the `request` and `srequest` methods, if
+-- not logged in already. Has no effect for API key auth.
 -- @return `true` or `nil+err`
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
 -- local ok, err = mhsession:login()
 -- if not ok then
 --   print("failed to login: ", err)
 -- end
 function millheat:login()
-  millheat.log:info("[millheat] logging in for %s", self.username)
-  local access, err = get_access_token(self)  -- will force a login if required
+  local access, err = get_authorization_headers(self)  -- will force a login if required
   return access and true, err
 end
 
@@ -479,204 +603,24 @@ end
 
 
 
---- Gets the list of homes.
--- Invokes the `/uds/selectHomeList` endpoint.
+--- Gets the list of houses.
+-- Invokes the `GET`:`/houses` endpoint.
 -- @return list, or nil+err
 -- @usage
 -- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
--- local home_list = mhsession:get_homes()
-function millheat:get_homes()
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectHomeList"))
+-- local mhsession = millheat.new {
+--   username = "name@email.org",
+--   password = "secret_password",
+-- }
+-- local home_list = mhsession:get_houses()
+function millheat:get_houses()
+  local ok, response_body = self:srequest("GET:/houses")
   if not ok then
     millheat.log:error("[millheat] failed to get home list: %s", response_body)
     return nil, "failed to get home list: "..response_body
   end
 
-  if response_body.data.homeList then
-    return response_body.data.homeList
-  end
-
-  return nil, "no homeList received, response body: " .. json.encode(response_body)
-end
-
-
---- Gets the list of rooms associated with a home.
--- Invokes the `/uds/selectRoombyHome2020` endpoint.
--- @tparam string|number home_id the home for which to get the list of rooms
--- @return list, or nil+err
-function millheat:get_rooms_by_home(home_id)
-  if type(home_id) ~= "string" then
-    if type(home_id) ~= "number" then
-      error("expected home_id to be a string or number")
-    end
-    home_id = string.format("%d", home_id)
-  end
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectRoombyHome2020", { homeId = home_id }))
-  if not ok then
-    millheat.log:error("[millheat] failed to get room list: %s", response_body)
-    return nil, "failed to get room list: "..response_body
-  end
-
-  if response_body.data.roomList then
-    return response_body.data.roomList
-  end
-
-  return nil, "no roomList received, response body: " .. json.encode(response_body)
-end
-
-
---- Gets the list of devices associated with a room.
--- Invokes the `/uds/selectDevicebyRoom2020` endpoint.
--- @tparam string|number room_id the room for which to get the list of devices
--- @return list, or nil+err
-function millheat:get_devices_by_room(room_id)
-  if type(room_id) ~= "string" then
-    if type(room_id) ~= "number" then
-      error("expected room_id to be a string or number")
-    end
-    room_id = string.format("%d", room_id)
-  end
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevicebyRoom2020", { roomId = room_id }))
-  if not ok then
-    millheat.log:error("[millheat] failed to get device list: %s", response_body)
-    return nil, "failed to get device list: "..response_body
-  end
-
-  if response_body.data.deviceList then
-    return response_body.data.deviceList
-  end
-
-  return nil, "no deviceList received, response body: " .. json.encode(response_body)
-end
-
-
---- Gets the list of independent devices not associated with a room.
--- Invokes the `/uds/getIndependentDevices2020` endpoint.
--- @tparam string|number home_id the home for which to get the list of independent devices
--- @return list, or nil+err
-function millheat:get_independent_devices_by_home(home_id)
-  if type(home_id) ~= "string" then
-    if type(home_id) ~= "number" then
-      error("expected home_id to be a string or number")
-    end
-    home_id = string.format("%d", home_id)
-  end
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/getIndependentDevices2020", { homeId = home_id }))
-  if not ok then
-    millheat.log:error("[millheat] failed to get independent devices list: %s", response_body)
-    return nil, "failed to get independent devices list: "..response_body
-  end
-
-  if response_body.data.deviceInfoList then
-    return response_body.data.deviceInfoList
-  end
-
-  return nil, "no deviceInfoList received, response body: " .. json.encode(response_body)
-end
-
-
---- Gets the device data.
--- Invokes the `/uds/selectDevice2020` endpoint.
--- @tparam string|number device_id the device for which to get the data
--- @return list, or nil+err
-function millheat:get_device(device_id)
-  if type(device_id) ~= "string" then
-    if type(device_id) ~= "number" then
-      error("expected home_id to be a string or number")
-    end
-    device_id = string.format("%d", device_id)
-  end
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/selectDevice2020", { deviceId = device_id }))
-  if not ok then
-    millheat.log:error("[millheat] failed to get device data: %s", response_body)
-    return nil, "failed to get device data: "..response_body
-  end
-
-  if response_body.data.deviceInfo then
-    return response_body.data.deviceInfo
-  end
-
-  return nil, "no deviceInfo received, response body: " .. json.encode(response_body)
-end
-
-
---- Controls a specific device.
--- Invokes the `/uds/deviceControlForOpenApi` endpoint.
--- @tparam string|number device_id the device to control
--- @tparam "temperature"|"switch" operation the operation to perform
--- @tparam "room"|"single"|"on"|"off"|true|false status either "room" or single" (for a `temperature` operation), or "on"/true or "off"/false (for a `switch` operation).
--- @tparam number temperature the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
--- @return true or nil+err
--- @usage
--- local millheat = require "millheat"
--- local mhsession = millheat.new("abcdef", "xyz", "myself@nothere.com", "secret_password")
--- local ok, err = mhsession:control_device(123, "temperature", "single", 19)
--- if not ok then
---   print("failed to control the device: ", err)
--- end
-function millheat:control_device(device_id, operation, status, temperature)
-
-  if type(device_id) ~= "string" then
-    if type(device_id) ~= "number" then
-      error("expected device_id to be a string or number")
-    end
-    device_id = string.format("%d", device_id)
-  end
-
-  status = tostring(status):lower()
-  operation = tostring(operation):lower()
-  if operation == "temperature" then
-    operation = "1"
-
-    if status == "single" then
-      status = "1"
-    elseif status == "room" then
-      status = "0"
-    else
-      error("with operation 'temperature', status must be either 'single' or 'room', got: " .. status)
-    end
-
-  elseif operation == "switch" then
-    operation = "0"
-
-    if status == "on" or status == "true" then
-      status = "1"
-    elseif status == "off" or status == "false" then
-      status = "0"
-    else
-      error("with operation 'switch', status must be either 'on'/true or 'off'/false, got: " .. status)
-    end
-
-  else
-    error("operation must be either 'temperature' or 'switch', got: " .. operation)
-  end
-
-  if operation == "1" and status == "1" then
-    if type(temperature) ~= "number" then
-      error("temperature must be a number, got: " .. type(temperature))
-    end
-    temperature = tostring(math.floor(temperature + 0.5))
-  end
-
-
-  local ok, response_body = self:rewrite_error(200, self:request("/uds/deviceControlForOpenApi", {
-    deviceId = device_id,
-    holdTemp = temperature,
-    operation = operation,
-    status = status,
-  }))
-  if not ok then
-    millheat.log:error("[millheat] failed to control device: %s", response_body)
-    return nil, "failed to control device: "..response_body
-  end
-
-  return true
+  return response_body
 end
 
 

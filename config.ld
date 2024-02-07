@@ -3,6 +3,7 @@ title='Millheat API'
 description='Millheat electrical heater API access made easy'
 format='markdown'
 file='./src/'
+examples='./examples/'
 dir='docs'
 readme='readme.md'
 sort=true
