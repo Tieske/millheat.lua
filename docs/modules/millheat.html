@@ -26,13 +26,13 @@
 <br/>
 <h1>millheat.lua</h1>
 
-
 <ul>
   <li><a href="../index.html">Index</a></li>
 </ul>
 
 <h2>Contents</h2>
 <ul>
+<li><a href="#Tables">Tables</a></li>
 <li><a href="#Generic_functions">Generic functions </a></li>
 <li><a href="#API_specific_functions">API specific functions </a></li>
 </ul>
@@ -47,6 +47,10 @@
 <ul class="">
   <li><a href="../topics/readme.md.html">readme</a></li>
 </ul>
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><a href="../examples/example.lua.html">example.lua</a></li>
+</ul>
 
 </div>
 
@@ -54,52 +58,66 @@
 
 <h1>Module <code>millheat</code></h1>
 <p>Millheat API library for Millheat electrical heaters.</p>
-<p>
-
-
 <p> This library implements the session management and makes it easy to access
  individual endpoints of the API.</p>
 
-<p> API documentation: <a href="https://api.millheat.com/share/apidocument">https://api.millheat.com/share/apidocument</a>.</p>
-
-<p> The API has some weird behaviour, it very much looks like a Java RPC API instead
- of a REST-full http api.</p>
-
-<ul>
-    <li>versioning is done by new methods with a date in their name</li>
-    <li>temperature reports (number) can return <code>&quot;--.-&quot;</code> (string) if a value is
-    (temporarily) absent, instead of a more appropriate <code>json.NULL</code> value</li>
-    <li>reports 200 success, but internally still reports an error (this behaviour is
-    dealt with by the <a href="../modules/millheat.html#rewrite_error">rewrite_error</a> method).</li>
-</ul>
-</p>
+<p> API documentation: <a href="http://mn-be-prod-documentation.s3-website.eu-central-1.amazonaws.com/#/">http://mn-be-prod-documentation.s3-website.eu-central-1.amazonaws.com/#/</a>.</p>
     <h3>Usage:</h3>
     <ul>
-        <pre class="example">local millheat = require &quot;millheat&quot;
-local mhsession = millheat.new(&quot;abcdef&quot;, &quot;xyz&quot;, &quot;myself@nothere.com&quot;, &quot;secret_password&quot;)
-local home_list, err = mhsession:get_homes()
+        <li><pre class="example">local millheat = require &quot;millheat&quot;
+local mhsession = millheat.new {
+  -- use username/password OR apikey, not both!
+  username = &quot;name@email.org&quot;,
+  password = &quot;secret_password&quot;,
+  -- api_key = &quot;xyz&quot;,
+}
 
--- or using the Copas scheduler
+local ok, data = self:srequest(&quot;GET:/houses/{houseId}/rooms&quot;, { houseId = &quot;some-id-here&quot; })
+if not ok then
+  print(&quot;failed to get rooms: &quot;, data)
+end
+
+mhsession:logout()
+</pre></li>
+        <li><pre class="example">-- or using the Copas scheduler
 local copas = require &quot;copas&quot;
 
 copas.addthread(function()
   local millheat = require &quot;millheat&quot;
-  local mhsession = millheat.new(&quot;abcdef&quot;, &quot;xyz&quot;, &quot;myself@nothere.com&quot;, &quot;secret_password&quot;)
-  local home_list, err = mhsession:get_homes()
+  local mhsession = millheat.new {
+    -- use username/password OR apikey, not both!
+    username = &quot;name@email.org&quot;,
+    password = &quot;secret_password&quot;,
+    -- api_key = &quot;xyz&quot;,
+  }
+
+  local ok, data = self:srequest(&quot;GET:/houses/{houseId}/rooms&quot;, { houseId = &quot;some-id-here&quot; })
+  if not ok then
+    print(&quot;failed to get rooms: &quot;, data)
+  end
+
+  mhsession:logout()
 end)
 
 copas.loop()
-</pre>
+</pre></li>
     </ul>
     <h3>Info:</h3>
     <ul>
-        <li><strong>Copyright</strong>: 2020-2022 Thijs Schreijer</li>
+        <li><strong>Copyright</strong>: 2020-2024 Thijs Schreijer</li>
         <li><strong>Release</strong>: Version 0.3.0, Library to access the Millheat API</li>
         <li><strong>License</strong>: millheat.lua is free software under the MIT/X11 license.</li>
         <li><strong>Author</strong>: Thijs Schreijer</li>
     </ul>
 
 
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#millheat">millheat</a></td>
+	<td class="summary">The module table containing some global settings and constants.</td>
+	</tr>
+</table>
 <h2><a href="#Generic_functions">Generic functions </a></h2>
 <table class="function_list">
 	<tr>
@@ -111,43 +129,27 @@ copas.loop()
 	<td class="summary">Logs out of the current session.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#new">new (access_key, secret_token, username, password)</a></td>
+	<td class="name" nowrap><a href="#new">new (opts)</a></td>
 	<td class="summary">Creates a new Millheat session instance.</td>
 	</tr>
 	<tr>
-	<td class="name" nowrap><a href="#request">request (path[, query])</a></td>
+	<td class="name" nowrap><a href="#request">request (path[, method="GET"[, query[, body]]])</a></td>
 	<td class="summary">Performs a HTTP request on the Millheat API.</td>
 	</tr>
 	<tr>
 	<td class="name" nowrap><a href="#rewrite_error">rewrite_error ([expected], ...)</a></td>
 	<td class="summary">Rewrite errors to Lua format (nil+error).</td>
 	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#srequest">srequest (path[, params[, body]])</a></td>
+	<td class="summary">Smart HTTP request on the Millheat API.</td>
+	</tr>
 </table>
 <h2><a href="#API_specific_functions">API specific functions </a></h2>
 <table class="function_list">
 	<tr>
-	<td class="name" nowrap><a href="#control_device">control_device (device_id, operation, status, temperature)</a></td>
-	<td class="summary">Controls a specific device.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#get_device">get_device (device_id)</a></td>
-	<td class="summary">Gets the device data.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#get_devices_by_room">get_devices_by_room (room_id)</a></td>
-	<td class="summary">Gets the list of devices associated with a room.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#get_homes">get_homes ()</a></td>
-	<td class="summary">Gets the list of homes.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#get_independent_devices_by_home">get_independent_devices_by_home (home_id)</a></td>
-	<td class="summary">Gets the list of independent devices not associated with a room.</td>
-	</tr>
-	<tr>
-	<td class="name" nowrap><a href="#get_rooms_by_home">get_rooms_by_home (home_id)</a></td>
-	<td class="summary">Gets the list of rooms associated with a home.</td>
+	<td class="name" nowrap><a href="#get_houses">get_houses ()</a></td>
+	<td class="summary">Gets the list of houses.</td>
 	</tr>
 </table>
 
@@ -155,6 +157,38 @@ copas.loop()
 <br/>
 
 
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "millheat"></a>
+    <strong>millheat</strong>
+    </dt>
+    <dd>
+    The module table containing some global settings and constants.
+
+
+    <h3>Fields:</h3>
+    <ul>
+        <li><span class="parameter">https</span>
+         This is a function set on the module table, such that it can
+ be overridden by another implementation. If <a href="https://lunarmodules.github.io/copas/">Copas</a>) was
+ loaded before this module then <code>copas.http</code> will be used, otherwise it
+ uses the <a href="https://github.com/lunarmodules/luasec">LuaSec</a> one (module <code>ssl.https</code>).
+        </li>
+        <li><span class="parameter">log</span>
+         Logger is set on the module table, to be able to override it.
+ Default is the <a href="https://lunarmodules.github.io/lualogging/">LuaLogging</a> default logger if LuaLogging
+ was loaded before this module. Otherwise it uses a stub logger with only no-op functions.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
     <h2 class="section-header has-description"><a name="Generic_functions"></a>Generic functions </h2>
 
           <div class="section-description">
@@ -167,8 +201,8 @@ copas.loop()
     </dt>
     <dd>
     Logs in the current session.
- This will automatically be called by the <a href="../modules/millheat.html#request">request</a> method, if not logged in
- already.
+ This will automatically be called by the <a href="../modules/millheat.html#request">request</a> and <a href="../modules/millheat.html#srequest">srequest</a> methods, if
+ not logged in already. Has no effect for API key auth.
 
 
 
@@ -183,7 +217,10 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
 <span class="keyword">local</span> ok, err = mhsession:login()
 <span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
   <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
@@ -197,8 +234,7 @@ copas.loop()
     </dt>
     <dd>
     Logs out of the current session.
- There is no real logout option with this API. Hence this only deletes
- the locally stored tokens.
+ This only applies to user/pwd login. Does nothing for API key auth.
 
 
     <h3>Parameters:</h3>
@@ -214,7 +250,7 @@ copas.loop()
     <h3>Returns:</h3>
     <ol>
 
-        <code>true</code>
+        <code>true</code> or <code>nil+err</code>
     </ol>
 
 
@@ -222,7 +258,10 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
 <span class="keyword">local</span> ok, err = mhsession:login()
 <span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
   <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
@@ -234,32 +273,36 @@ copas.loop()
 </dd>
     <dt>
     <a name = "new"></a>
-    <strong>new (access_key, secret_token, username, password)</strong>
+    <strong>new (opts)</strong>
     </dt>
     <dd>
     Creates a new Millheat session instance.
  If a session for the credentials already exists, the existing session is
- returned. See <a href="../modules/millheat.html#logout">millheat.logout</a> for destroying sessions.
+ returned. See <a href="../modules/millheat.html#logout">millheat.logout</a> for destroying sessions.</p>
+
+<p> Use either <code>username+password</code> OR <code>api_key</code>, not both.
 
 
     <h3>Parameters:</h3>
     <ul>
-        <li><span class="parameter">access_key</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         the <code>access_key</code> to use for login
-        </li>
-        <li><span class="parameter">secret_token</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
-         the <code>secret_token</code> to use for login
-        </li>
+        <li><span class="parameter">opts</span> the options table, supporting the following options:
+        <ul>
         <li><span class="parameter">username</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          the <code>username</code> to use for login
+         (<em>optional</em>)
         </li>
         <li><span class="parameter">password</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          the <code>password</code> to use for login
+         (<em>optional</em>)
         </li>
+        <li><span class="parameter">api_key</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         the <code>api_key</code> to use for login
+         (<em>optional</em>)
+        </li>
+        </li></ul>
     </ul>
 
     <h3>Returns:</h3>
@@ -273,7 +316,10 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
 <span class="keyword">local</span> ok, err = mhsession:login()
 <span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
   <span class="global">print</span>(<span class="string">"failed to login: "</span>, err)
@@ -283,14 +329,18 @@ copas.loop()
 </dd>
     <dt>
     <a name = "request"></a>
-    <strong>request (path[, query])</strong>
+    <strong>request (path[, method="GET"[, query[, body]]])</strong>
     </dt>
     <dd>
     Performs a HTTP request on the Millheat API.
- It will automatically inject authentication/session data. Or if not logged
+ It will automatically inject authentication/session data. Or if not
  logged in yet, it will log in. If the session has expired it will be renewed.</p>
 
-<p> NOTE: if the response_body is json, then it will be decoded and returned as
+<p> This method is a low-level method, and is used by the higher level <a href="../modules/millheat.html#srequest">srequest</a>.
+ The latter is recommended for use in most cases since it is easier to use and
+ more readable.</p>
+
+<p> NOTE: if the response_body is JSON, then it will be decoded and returned as
  a Lua table.
 
 
@@ -300,9 +350,19 @@ copas.loop()
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
          the relative path within the API base path
         </li>
+        <li><span class="parameter">method</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         the http method to use (will be capitalized)
+         (<em>default</em> "GET")
+        </li>
         <li><span class="parameter">query</span>
             <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
          query parameters (will be escaped)
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">body</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         request body, a table will be encoded as json
          (<em>optional</em>)
         </li>
     </ul>
@@ -318,12 +378,15 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
 
-<span class="keyword">local</span> query = { [<span class="string">"param1"</span>] = <span class="string">"value1"</span> }
+<span class="keyword">local</span> body = { param1 = <span class="string">"value1"</span> }
 
 <span class="comment">-- the following line will automatically log in
-</span><span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:request(<span class="string">"/some/path"</span>, query)</pre>
+</span><span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:request(<span class="string">"/some/path"</span>, <span class="string">"GET"</span>, <span class="keyword">nil</span>, body)</pre>
     </ul>
 
 </dd>
@@ -337,9 +400,6 @@ copas.loop()
 
 <ul>
     <li>nil+err</li>
-    <li>body with "success = false" (some API calls return a 200 with success=false for example)</li>
-    <li>API based errorCode values will be updated to equivalent HTTP statussses
-    ( 0 == http 200, &lt; 200 == http 500, &lt; 300 == http 401, &lt; 400 == http 400, else 500)</li>
     <li>mismatch in expected status code (a 200 expected, but a 404 received)</li>
 </ul>
 
@@ -350,8 +410,8 @@ copas.loop()
     <h3>Parameters:</h3>
     <ul>
         <li><span class="parameter">expected</span>
-            <span class="types"><span class="type">number</span></span>
-         expected status code, if <code>nil</code>, it will be ignored
+            <span class="types"><span class="type">number</span> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         expected status code, if <code>nil</code>, it will be ignored. If a table then the keys must be the allowed status codes.
          (<em>optional</em>)
         </li>
         <li><span class="parameter">...</span>
@@ -362,7 +422,7 @@ copas.loop()
     <h3>Returns:</h3>
     <ol>
 
-        <code>nil+err</code> or the input arguments
+        <code>nil+err</code> on error, or the input arguments
     </ol>
 
 
@@ -370,13 +430,74 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
 
-<span class="comment">-- Make a request where we expect a 200 result
-</span><span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:rewrite_error(<span class="number">200</span>, mhsession:request(<span class="string">"/some/path"</span>))
+<span class="comment">-- Make a request where we expect a 200 or 201 result
+</span>expected = { <span class="number">200</span> = <span class="keyword">true</span>, <span class="number">201</span> = <span class="keyword">true</span> }
+<span class="keyword">local</span> ok, response_body, status, headers, statusline = mhsession:rewrite_error(expected, mhsession:request(<span class="string">"/some/path"</span>))
 <span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
   <span class="keyword">return</span> <span class="keyword">nil</span>, response_body <span class="comment">-- a 404 will also follow this path now, since we only want 200's
 </span><span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "srequest"></a>
+    <strong>srequest (path[, params[, body]])</strong>
+    </dt>
+    <dd>
+    Smart HTTP request on the Millheat API.
+ It will automatically inject authentication/session data, and login if required.
+ Parameters will be injected in the path, remaining ones will be added to the query.
+ Responses in <code>20x</code> range will be valid, anything else is returned as a Lua error.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">path</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         the relative path within the API base path, format: <code>&quot;METHOD:/path/{param1}/to/{param2}&quot;</code>. Method defaults to "GET".
+        </li>
+        <li><span class="parameter">params</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a></span>
+         parameters, path parameters will be injected, others will be added to the query (they will be escaped).
+         (<em>optional</em>)
+        </li>
+        <li><span class="parameter">body</span>
+            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.5">table</a> or <a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a></span>
+         request body, a table will be encoded as json
+         (<em>optional</em>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        <code>ok</code>, <code>response_body</code>, <code>response_code</code>, <code>response_headers</code>, <code>response_status_line</code> or <code>nil+error</code>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
+
+<span class="keyword">local</span> house_id = <span class="string">"xyz some id"</span>
+
+<span class="comment">-- the following line will automatically log in, and fetch the data
+</span><span class="keyword">local</span> ok, data = mhsession:srequest(<span class="string">"GET:/houses/{houseId}/devices"</span>, {
+  houseId = house_id,
+})
+<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
+  <span class="global">print</span>(<span class="string">"failed to get devices: "</span>, data)
+<span class="keyword">end</span></pre>
     </ul>
 
 </dd>
@@ -388,114 +509,12 @@ copas.loop()
           </div>
     <dl class="function">
     <dt>
-    <a name = "control_device"></a>
-    <strong>control_device (device_id, operation, status, temperature)</strong>
+    <a name = "get_houses"></a>
+    <strong>get_houses ()</strong>
     </dt>
     <dd>
-    Controls a specific device.
- Invokes the <code>/uds/deviceControlForOpenApi</code> endpoint.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">device_id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
-         the device to control
-        </li>
-        <li><span class="parameter">operation</span>
-            <span class="types"><span class="type">"temperature"</span> or <span class="type">"switch"</span></span>
-         the operation to perform
-        </li>
-        <li><span class="parameter">status</span>
-            <span class="types"><span class="type">"room"</span>, <span class="type">"single"</span>, <span class="type">"on"</span>, <span class="type">"off"</span>, <span class="type">true</span> or <span class="type">false</span></span>
-         either "room" or single" (for a <code>temperature</code> operation), or "on"/true or "off"/false (for a <code>switch</code> operation).
-        </li>
-        <li><span class="parameter">temperature</span>
-            <span class="types"><span class="type">number</span></span>
-         the temperature (integer) to set, only has an effect with "temperature"+"single" operation and status.
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        true or nil+err
-    </ol>
-
-
-
-    <h3>Usage:</h3>
-    <ul>
-        <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
-<span class="keyword">local</span> ok, err = mhsession:control_device(<span class="number">123</span>, <span class="string">"temperature"</span>, <span class="string">"single"</span>, <span class="number">19</span>)
-<span class="keyword">if</span> <span class="keyword">not</span> ok <span class="keyword">then</span>
-  <span class="global">print</span>(<span class="string">"failed to control the device: "</span>, err)
-<span class="keyword">end</span></pre>
-    </ul>
-
-</dd>
-    <dt>
-    <a name = "get_device"></a>
-    <strong>get_device (device_id)</strong>
-    </dt>
-    <dd>
-    Gets the device data.
- Invokes the <code>/uds/selectDevice2020</code> endpoint.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">device_id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
-         the device for which to get the data
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        list, or nil+err
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "get_devices_by_room"></a>
-    <strong>get_devices_by_room (room_id)</strong>
-    </dt>
-    <dd>
-    Gets the list of devices associated with a room.
- Invokes the <code>/uds/selectDevicebyRoom2020</code> endpoint.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">room_id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
-         the room for which to get the list of devices
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        list, or nil+err
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "get_homes"></a>
-    <strong>get_homes ()</strong>
-    </dt>
-    <dd>
-    Gets the list of homes.
- Invokes the <code>/uds/selectHomeList</code> endpoint.
+    Gets the list of houses.
+ Invokes the <code>GET</code>:<code>/houses</code> endpoint.
 
 
 
@@ -510,63 +529,12 @@ copas.loop()
     <h3>Usage:</h3>
     <ul>
         <pre class="example"><span class="keyword">local</span> millheat = <span class="global">require</span> <span class="string">"millheat"</span>
-<span class="keyword">local</span> mhsession = millheat.new(<span class="string">"abcdef"</span>, <span class="string">"xyz"</span>, <span class="string">"myself@nothere.com"</span>, <span class="string">"secret_password"</span>)
-<span class="keyword">local</span> home_list = mhsession:get_homes()</pre>
+<span class="keyword">local</span> mhsession = millheat.new {
+  username = <span class="string">"name@email.org"</span>,
+  password = <span class="string">"secret_password"</span>,
+}
+<span class="keyword">local</span> home_list = mhsession:get_houses()</pre>
     </ul>
-
-</dd>
-    <dt>
-    <a name = "get_independent_devices_by_home"></a>
-    <strong>get_independent_devices_by_home (home_id)</strong>
-    </dt>
-    <dd>
-    Gets the list of independent devices not associated with a room.
- Invokes the <code>/uds/getIndependentDevices2020</code> endpoint.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">home_id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
-         the home for which to get the list of independent devices
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        list, or nil+err
-    </ol>
-
-
-
-
-</dd>
-    <dt>
-    <a name = "get_rooms_by_home"></a>
-    <strong>get_rooms_by_home (home_id)</strong>
-    </dt>
-    <dd>
-    Gets the list of rooms associated with a home.
- Invokes the <code>/uds/selectRoombyHome2020</code> endpoint.
-
-
-    <h3>Parameters:</h3>
-    <ul>
-        <li><span class="parameter">home_id</span>
-            <span class="types"><a class="type" href="https://www.lua.org/manual/5.1/manual.html#5.4">string</a> or <span class="type">number</span></span>
-         the home for which to get the list of rooms
-        </li>
-    </ul>
-
-    <h3>Returns:</h3>
-    <ol>
-
-        list, or nil+err
-    </ol>
-
-
-
 
 </dd>
 </dl>
@@ -576,7 +544,7 @@ copas.loop()
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
-<i style="float:right;">Last updated 2022-12-30 14:39:05 </i>
+<i style="float:right;">Last updated 2024-02-09 17:09:31 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>

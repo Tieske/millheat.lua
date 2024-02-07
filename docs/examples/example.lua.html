@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>Millheat API</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>millheat.lua</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+
+
+<h2>Examples</h2>
+<ul class="nowrap">
+  <li><strong>example.lua</strong></li>
+</ul>
+<h2>Modules</h2>
+<ul class="nowrap">
+  <li><a href="../modules/millheat.html">millheat</a></li>
+  <li><a href="../modules/millheat.compat.html">millheat.compat</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="">
+  <li><a href="../topics/readme.md.html">readme</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+    <h2>example.lua</h2>
+<pre>
+<span class="comment">-- set up logging to be used by the module
+</span><span class="keyword">local</span> ansicolors = <span class="global">require</span>(<span class="string">"ansicolors"</span>)  <span class="comment">-- https://github.com/kikito/ansicolors.lua
+</span><span class="keyword">local</span> ll = <span class="global">require</span>(<span class="string">"logging"</span>)             <span class="comment">-- https://github.com/lunarmodules/lualogging
+</span><span class="global">require</span> <span class="string">"logging.console"</span>
+
+<span class="comment">-- configure the default logger
+</span>ll.defaultLogger(ll.console {
+  logLevel = ll.INFO, <span class="comment">-- DEBUG,           -- try and set to debug to see more details
+</span>  destination = <span class="string">"stderr"</span>,
+  timestampPattern = <span class="string">"%y-%m-%d %H:%M:%S.%q"</span>,
+  logPatterns = {
+    [ll.DEBUG] = ansicolors(<span class="string">"%date%{cyan} %level %message %{reset}(%source)\n"</span>),
+    [ll.INFO] = ansicolors(<span class="string">"%date %level %message\n"</span>),
+    [ll.WARN] = ansicolors(<span class="string">"%date%{yellow} %level %message\n"</span>),
+    [ll.ERROR] = ansicolors(<span class="string">"%date%{red bright} %level %message %{reset}(%source)\n"</span>),
+    [ll.FATAL] = ansicolors(<span class="string">"%date%{magenta bright} %level %message %{reset}(%source)\n"</span>),
+  }
+})
+
+
+<span class="comment">-- Load Copas first, then the millheat module. This ensure we can use async Copas requests
+</span><span class="keyword">local</span> copas = <span class="global">require</span> <span class="string">"copas"</span>
+
+
+<span class="comment">-- Load the millheat module
+</span><span class="keyword">local</span> millheat = <span class="global">require</span>(<span class="string">"millheat.init"</span>)
+
+<span class="comment">-- Create a Millheat session
+</span><span class="keyword">local</span> mh = millheat.new {
+  username = <span class="string">"someone@here.com"</span>,
+  password = <span class="string">"sooper secret"</span>,
+  <span class="comment">-- api_key = "xyz some key",
+</span>}
+
+
+<span class="keyword">local</span> task = <span class="keyword">function</span>()
+  <span class="comment">-- fetch the houses for this account, the JSON payload is returned as a Lua table
+</span>  <span class="keyword">local</span> _, houses = <span class="global">assert</span>(mh:srequest(<span class="string">"GET:/houses"</span>))
+
+  <span class="comment">-- select only our own houses from the response
+</span>  <span class="keyword">local</span> houses = houses.ownHouses <span class="keyword">or</span> {}
+
+  <span class="comment">-- loop over the houses
+</span>  <span class="keyword">for</span> _, house <span class="keyword">in</span> <span class="global">ipairs</span>(houses) <span class="keyword">do</span>
+    <span class="comment">-- get the independent devices for this house
+</span>    <span class="keyword">local</span> _, devices = <span class="global">assert</span>(mh:srequest(<span class="string">"GET:/houses/{houseId}/devices/independent"</span>, {
+      houseId = house.id
+    }))
+
+    <span class="comment">-- select the devices in the 'items' array of the response
+</span>    devices = devices.items <span class="keyword">or</span> {}
+    mh.log:info(<span class="string">"House: '%s' (id: %s), has %d independent devices"</span>, house.name, house.id, #devices)
+
+    <span class="comment">-- loop over the devices
+</span>    <span class="keyword">for</span> _, device <span class="keyword">in</span> <span class="global">ipairs</span>(devices) <span class="keyword">do</span>
+
+      <span class="comment">-- get the device details
+</span>      <span class="keyword">local</span> deviceName = device.customName <span class="keyword">or</span> <span class="string">"unnamed device"</span>
+      <span class="keyword">local</span> ambient = (device.lastMetrics <span class="keyword">or</span> {}).temperatureAmbient
+      <span class="keyword">local</span> setpoint = (device.lastMetrics <span class="keyword">or</span> {}).temperature
+      <span class="keyword">local</span> unit = ((device.deviceSettings <span class="keyword">or</span> {}).reported <span class="keyword">or</span> {}).display_unit <span class="keyword">or</span> <span class="string">"(unknown unit)"</span>
+
+      mh.log:info(<span class="string">"Device: '%s', current temperature: %d, setpoint: %d (%s)"</span>, deviceName, ambient, setpoint, unit)
+
+      <span class="comment">-- increase setpoint by 1 degree
+</span>      <span class="global">assert</span>(mh:srequest(<span class="string">"PATCH:/devices/{deviceId}/settings"</span>, {
+        deviceId = device.deviceId
+      }, {
+        deviceType = device.deviceType.parentType.name,
+        enabled = device.isEnabled,
+        settings = {
+          operation_mode = <span class="string">"independent_device"</span>,   <span class="comment">-- manual controllable, with timers
+</span>          temperature_normal = setpoint + <span class="number">1</span>,       <span class="comment">-- increase setpoint by one.
+</span>        }
+      }))
+
+      mh.log:info(<span class="string">"Setpoint for '%s' increased to %d"</span>, deviceName, setpoint + <span class="number">1</span>)
+    <span class="keyword">end</span>
+  <span class="keyword">end</span>
+
+  mh:logout()
+<span class="keyword">end</span>
+
+
+<span class="comment">-- start the async scheduler and run the task
+</span>copas(task)
+
+<span class="global">print</span>(<span class="string">"Copas exited"</span>)</pre>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.6</a></i>
+<i style="float:right;">Last updated 2024-02-09 17:09:31 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
