@@ -8,7 +8,7 @@
 -- @author Thijs Schreijer
 -- @license millheat.lua is free software under the MIT/X11 license.
 -- @copyright 2020-2024 Thijs Schreijer
--- @release Version 0.4.0, Library to access the Millheat API
+-- @release Version 0.4.1, Library to access the Millheat API
 -- @usage
 -- local millheat = require "millheat"
 -- local mhsession = millheat.new {
@@ -300,7 +300,7 @@ local function get_authorization_headers(self)
     -- make a refresh call
     millheat.log:debug("[millheat] getting access_token for %s", self.username)
     local ok, response_body = self:rewrite_error(200,
-      mill_request("/customer/auth/refresh", "POST", nil, {
+      mill_request("/customer/auth/refresh", "POST", {
         Authorization = "Bearer " .. refresh,
       })
     )

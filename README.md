@@ -30,6 +30,10 @@ See [LICENSE](https://github.com/Tieske/millheat.lua/blob/master/LICENSE)
 - render the docs using `ldoc`
 - commit, tag, and push
 
+### Version 0.4.1, released 11-Feb-2024
+
+- fix: refresh access-token header parameter accidentally in query.
+
 ### Version 0.4.0, released 11-Feb-2024
 
 - BREAKING: reimplement the core, based on the new REST API.
